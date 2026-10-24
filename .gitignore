@@ -4,6 +4,9 @@ __pycache__/
 .ruff_cache/
 .venv/
 .DS_Store
+*.egg-info/
+build/
 
-# Raw OECD downloads (the 46 MB zip and the 400 MB extracted file); the small sample in data/ is committed
-data/raw/
+# Local data and model files never belong in this repository
+data/
+*.csv

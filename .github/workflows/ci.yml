@@ -14,7 +14,6 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
-      - run: pip install -r requirements.txt pytest "ruff>=0.6,<1"
+      - run: pip install -e ".[dev]"
       - run: ruff check .
-      - run: python src/run_pipeline.py
       - run: pytest -q

@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.taxonomy import load_taxonomy
+from purpose_coder.taxonomy import load_taxonomy
 
 
 @pytest.fixture(scope="module")
