@@ -3,11 +3,13 @@
 import csv
 import hashlib
 import itertools
-from collections import Counter
 
 import pytest
 
-from src.data import SAMPLE_COLUMNS, ChecksumError, Record, group_key, load_splits, normalise_text
+from src.data import (
+    NEAR_DUPLICATE_COSINE, SAMPLE_COLUMNS, ChecksumError, Record, load_splits, near_duplicate_groups, normalise_text,
+)
+from src.settings import make_vectorizer
 
 LETTERS = "abcdefghij"
 WORDS = ["".join(p) for p in itertools.product(LETTERS, repeat=3)]
@@ -83,19 +85,21 @@ def test_same_crs_id_still_gets_distinct_record_ids(tmp_path):
     assert len(set(ids)) == 10
 
 
-def test_descriptions_that_differ_only_in_digits_and_punctuation_share_a_split(tmp_path):
+def test_descriptions_that_differ_only_in_the_title_share_a_split(tmp_path):
     rows = make_rows(per_code=60, codes=(("122", "12262"),))
-    for i in range(12):
+    countries = ["Angola", "Mozambique", "Malawi", "Zambia", "Kenya", "Uganda", "Ghana", "Mali", "Niger", "Chad"]
+    for i, country in enumerate(countries):
         rows.append({
             "crs_id": str(9000 + i), "year": "2024", "donor_name": "Donor", "sector_code": "122",
-            "purpose_code": "12262", "title": f"Direct Aid Program (DAP) 20{i}-2{i}",
-            "long_description": f"Small grants programme number {i}, funded in 20{i}!",
+            "purpose_code": "12262", "title": f"Health Strengthening Program (PARES) - {country}",
+            "long_description": "The programme trains community health workers, equips district clinics and "
+                                "supports the national malaria response through supervision and supplies.",
         })
     path = tmp_path / "s.csv"
     sha = write_csv(path, rows)
     splits = load_splits(path, expected_sha256=sha)
     homes = {name for name, part in (("train", splits.train), ("val", splits.val), ("test", splits.test))
-             for r in part if r.text.startswith("Direct Aid Program")}
+             for r in part if r.text.startswith("Health Strengthening Program")}
     assert len(homes) == 1
 
 
@@ -108,9 +112,17 @@ def test_splits_are_deterministic_and_the_seed_changes_them(small_csv):
     assert [r.id for r in a.test] != [r.id for r in c.test]
 
 
-def test_group_key_ignores_case_digits_and_punctuation_and_keeps_200_characters():
-    assert group_key("Direct Aid Program (DAP) 2023-24") == group_key("direct aid program DAP 2024-25")
-    assert len(group_key("a" * 500)) == 200
+def test_near_duplicate_groups_join_texts_at_or_above_the_cosine_threshold_and_chain_them():
+    texts = [
+        "malaria bed nets distribution in rural villages with insecticide spraying",
+        "malaria bed nets distribution in rural villages with insecticide spraying programme",
+        "tuberculosis drug treatment clinics laboratory detection programme for patients",
+        "tuberculosis drug treatment clinics laboratory detection programme for patients nationwide",
+        "nutrition supplements for children under five",
+    ]
+    groups = near_duplicate_groups(texts)
+    assert groups[0] == groups[1] and groups[2] == groups[3]
+    assert len({groups[0], groups[2], groups[4]}) == 3
 
 
 def test_normalise_text_collapses_whitespace():
@@ -119,16 +131,19 @@ def test_normalise_text_collapses_whitespace():
 
 # ---- the committed sample ----
 
-def test_committed_sample_matches_its_pinned_checksum_and_has_no_group_in_two_splits():
+def test_committed_sample_matches_its_pinned_checksum_and_splits_roughly_60_20_20():
     splits = load_splits()
-    parts = {"train": splits.train, "val": splits.val, "test": splits.test}
-    home = {}
-    for name, part in parts.items():
-        for r in part:
-            home.setdefault(group_key(r.text), set()).add(name)
-    assert all(len(v) == 1 for v in home.values())
-    sizes = Counter({k: len(v) for k, v in parts.items()})
+    sizes = {name: len(part) for name, part in (("train", splits.train), ("val", splits.val), ("test", splits.test))}
     total = sum(sizes.values())
     assert 0.55 < sizes["train"] / total < 0.65
     assert 0.15 < sizes["val"] / total < 0.25
     assert 0.15 < sizes["test"] / total < 0.25
+
+
+def test_no_val_or_test_text_has_a_train_neighbour_at_or_above_the_cosine_threshold():
+    splits = load_splits()
+    matrix = make_vectorizer().fit_transform([r.text for r in splits.train + splits.val + splits.test])
+    n_train = len(splits.train)
+    train, held_out = matrix[:n_train], matrix[n_train:]
+    worst = (held_out @ train.T).max(axis=1).toarray().ravel()
+    assert worst.max() < NEAR_DUPLICATE_COSINE
