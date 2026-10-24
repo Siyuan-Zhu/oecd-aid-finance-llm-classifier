@@ -4,31 +4,27 @@ import sys
 
 import pytest
 
-from src.data import Record
 from src.retrieval import SbertRetriever, TfidfRetriever
-
-
-def rec(i, text, code5, code3="122"):
-    return Record(id=str(i), text=text, code3=code3, code5=code5, year=2024, donor="D")
+from tests.fakes import make_record
 
 
 POOL = [
-    rec(1, "malaria bed nets distribution insecticide treated", "12262"),
-    rec(2, "tuberculosis treatment drugs clinics detection", "12263"),
-    rec(3, "malaria prevention spraying and bed nets in villages", "12262"),
-    rec(4, "nutrition supplements for children", "12240"),
-    rec(5, "malaria bed nets for solar mini grids", "23231", code3="232"),
+    make_record(1, "malaria bed nets distribution insecticide treated", "12262"),
+    make_record(2, "tuberculosis treatment drugs clinics detection", "12263"),
+    make_record(3, "malaria prevention spraying and bed nets in villages", "12262"),
+    make_record(4, "nutrition supplements for children", "12240"),
+    make_record(5, "malaria bed nets for solar mini grids", "23231", code3="232"),
 ]
 
 
 def test_top_k_returns_most_similar_first():
-    query = rec(10, "distribution of insecticide treated bed nets against malaria", "12262")
+    query = make_record(10, "distribution of insecticide treated bed nets against malaria", "12262")
     top = TfidfRetriever(POOL).top_k(query, 2)
     assert [r.id for r in top] == ["1", "3"]
 
 
 def test_only_examples_from_the_same_three_digit_sector_are_returned():
-    query = rec(10, "malaria bed nets", "12262")
+    query = make_record(10, "malaria bed nets", "12262")
     top = TfidfRetriever(POOL).top_k(query, 10)
     assert {r.code3 for r in top} == {"122"}
     assert "5" not in {r.id for r in top}
@@ -40,7 +36,7 @@ def test_the_query_record_itself_is_never_returned():
 
 
 def test_k_larger_than_the_pool_returns_what_there_is():
-    query = rec(10, "malaria", "12262")
+    query = make_record(10, "malaria", "12262")
     assert len(TfidfRetriever(POOL).top_k(query, 50)) == 4
 
 

@@ -18,13 +18,13 @@ from dataclasses import dataclass
 from typing import Protocol
 
 import numpy as np
-from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 
 from src.data import Record
 from src.llm import TextGenerator
 from src.prompting import build_prompt
 from src.retrieval import Retriever
+from src.settings import make_vectorizer
 from src.taxonomy import Taxonomy, load_taxonomy
 
 
@@ -40,10 +40,6 @@ class Classifier(Protocol):
     def fit(self, train: list[Record]) -> Classifier: ...
 
     def predict(self, records: list[Record]) -> list[Prediction]: ...
-
-
-def _vectorizer() -> TfidfVectorizer:
-    return TfidfVectorizer(sublinear_tf=True, stop_words="english", ngram_range=(1, 2))
 
 
 def _candidates_by_sector(train: list[Record], taxonomy: Taxonomy) -> dict[str, list[str]]:
@@ -106,7 +102,7 @@ class TfidfLogReg(_PerSector):
     def _fit_sector(self, texts, labels):
         if len(set(labels)) == 1:
             return ("constant", labels[0])
-        vectorizer = _vectorizer()
+        vectorizer = make_vectorizer()
         matrix = vectorizer.fit_transform(texts)
         model = LogisticRegression(C=self._C, class_weight="balanced", max_iter=2000)
         model.fit(matrix, labels)
@@ -134,7 +130,7 @@ class TfidfKnn(_PerSector):
         self._k = k
 
     def _fit_sector(self, texts, labels):
-        vectorizer = _vectorizer()
+        vectorizer = make_vectorizer()
         return (vectorizer, vectorizer.fit_transform(texts), labels)
 
     def _predict_sector(self, model, texts):

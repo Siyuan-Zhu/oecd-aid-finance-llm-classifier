@@ -3,12 +3,8 @@
 import pytest
 
 from src.classifiers import Prediction
-from src.data import Record
 from src.evaluate import apply_threshold, choose_threshold, evaluate, selective
-
-
-def rec(i, code5, code3=None):
-    return Record(id=str(i), text=f"text {i}", code3=code3 or code5[:3], code5=code5, year=2024, donor="D")
+from tests.fakes import make_record
 
 
 def pred(code5, confidence=1.0):
@@ -16,7 +12,7 @@ def pred(code5, confidence=1.0):
 
 
 # Truth: A A A B B C (A=12262, B=12263 in sector 122; C=12340 in sector 123)
-RECORDS = [rec(1, "12262"), rec(2, "12262"), rec(3, "12262"), rec(4, "12263"), rec(5, "12263"), rec(6, "12340")]
+RECORDS = [make_record(1, "text 1", "12262"), make_record(2, "text 2", "12262"), make_record(3, "text 3", "12262"), make_record(4, "text 4", "12263"), make_record(5, "text 5", "12263"), make_record(6, "text 6", "12340")]
 
 
 def test_accuracy_counts_abstentions_as_wrong():

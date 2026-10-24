@@ -14,15 +14,18 @@ import argparse
 import importlib
 import json
 import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from src.settings import MAX_INPUT_TOKENS, MAX_TOTAL_TOKENS, MODEL_ID  # noqa: E402
 
 TGI_IMAGE = (
     "us-docker.pkg.dev/deeplearning-platform-release/gcr.io/"
     "huggingface-text-generation-inference-cu124.2-4.ubuntu2204.py311"
 )
-MODEL_ID = "google/flan-ul2"
-# FLAN-UL2 takes 2048 input tokens; the 16 extra tokens leave room for the 5-digit code.
-MAX_INPUT_TOKENS = 2048
-MAX_TOTAL_TOKENS = 2064
 
 # Vertex AI online-prediction list prices per node hour, read on 2026-10-23 from
 # https://cloud.google.com/vertex-ai/pricing. The page shows no date, and the region of the figures was not confirmed.

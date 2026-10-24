@@ -10,9 +10,8 @@ from __future__ import annotations
 from typing import Protocol
 
 import numpy as np
-from sklearn.feature_extraction.text import TfidfVectorizer
-
 from src.data import Record
+from src.settings import make_vectorizer
 
 
 class Retriever(Protocol):
@@ -46,7 +45,7 @@ class _SimilarityRetriever:
 
 class TfidfRetriever(_SimilarityRetriever):
     def __init__(self, pool: list[Record]):
-        self._vectorizer = TfidfVectorizer(sublinear_tf=True, stop_words="english", ngram_range=(1, 2))
+        self._vectorizer = make_vectorizer()
         super().__init__(pool)
 
     def _embed_pool(self, texts):

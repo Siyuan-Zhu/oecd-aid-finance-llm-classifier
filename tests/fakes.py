@@ -2,6 +2,13 @@
 
 from __future__ import annotations
 
+from src.data import Record
+
+
+def make_record(id, text, code5="12262", code3=None):
+    """A labelled record; the sector defaults to the first three digits of the purpose code."""
+    return Record(id=str(id), text=text, code3=code3 or code5[:3], code5=code5, year=2024, donor="D")
+
 
 class FakeTextGenerator:
     """Returns canned answers. `answers` is a list (cycled) or a function from prompt to answer."""

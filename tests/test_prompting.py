@@ -2,9 +2,9 @@
 
 import pytest
 
-from src.data import Record
 from src.prompting import approx_tokens, build_prompt
 from src.taxonomy import load_taxonomy
+from tests.fakes import make_record
 
 
 @pytest.fixture(scope="module")
@@ -12,13 +12,9 @@ def taxonomy():
     return load_taxonomy()
 
 
-def rec(i, text, code5="12262", code3="122"):
-    return Record(id=str(i), text=text, code3=code3, code5=code5, year=2024, donor="D")
-
-
-QUERY = rec(0, "Query project about bed nets.", "12262")
-NEAR = rec(1, "Near example about malaria nets.", "12262")
-FAR = rec(2, "Far example about vaccination clinics.", "12250")
+QUERY = make_record(0, "Query project about bed nets.", "12262")
+NEAR = make_record(1, "Near example about malaria nets.", "12262")
+FAR = make_record(2, "Far example about vaccination clinics.", "12250")
 
 
 def test_prompt_lists_the_criteria_for_the_sectors_codes_only(taxonomy):
@@ -31,7 +27,7 @@ def test_prompt_lists_the_criteria_for_the_sectors_codes_only(taxonomy):
 
 
 def test_voluntary_codes_are_left_out_unless_passed_as_candidates(taxonomy):
-    query = rec(0, "Query", "12110", "121")
+    query = make_record(0, "Query", "12110", "121")
     assert "12196" not in build_prompt(query, [], taxonomy)
     only = [taxonomy.get("12110"), taxonomy.get("12196")]
     assert "12196" in build_prompt(query, [], taxonomy, candidates=only)
@@ -69,7 +65,7 @@ def test_least_similar_examples_are_dropped_first_when_over_budget(taxonomy):
 
 
 def test_a_long_query_is_cut_to_fit_when_no_example_can_be_kept(taxonomy):
-    long_query = rec(0, " ".join(f"word{i}" for i in range(5000)))
+    long_query = make_record(0, " ".join(f"word{i}" for i in range(5000)))
     prompt = build_prompt(long_query, [NEAR], taxonomy, max_tokens=2048)
     assert approx_tokens(prompt) <= 2048 - 16
     assert NEAR.text not in prompt
@@ -78,7 +74,7 @@ def test_a_long_query_is_cut_to_fit_when_no_example_can_be_kept(taxonomy):
 
 
 def test_default_budget_is_flan_ul2s_2048_tokens(taxonomy):
-    examples = [rec(i, "Example text about malaria nets and spraying. " * 40) for i in range(1, 30)]
+    examples = [make_record(i, "Example text about malaria nets and spraying. " * 40) for i in range(1, 30)]
     prompt = build_prompt(QUERY, examples, taxonomy)
     assert approx_tokens(prompt) <= 2048 - 16
     assert 0 < prompt.count("Purpose code: 12262\n") < 29

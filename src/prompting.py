@@ -16,10 +16,9 @@ import math
 from collections.abc import Callable
 
 from src.data import Record
+from src.settings import MAX_INPUT_TOKENS, RESERVED_TOKENS
 from src.taxonomy import PurposeCode, Taxonomy
 
-MAX_INPUT_TOKENS = 2048
-RESERVED_TOKENS = 16     # room left for the generated code (FLAN-UL2 served with MAX_TOTAL_TOKENS = 2064)
 CHARS_PER_TOKEN = 3.5    # English prose is about 4 characters per SentencePiece token; 3.5 errs on the safe side
 
 
