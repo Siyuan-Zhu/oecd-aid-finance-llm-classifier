@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+.DS_Store
+
+# Raw OECD downloads (the 46 MB zip and the 400 MB extracted file); the small sample in data/ is committed
+data/raw/

@@ -1,0 +1,28 @@
+[project]
+name = "oecd-aid-finance-llm-classifier"
+version = "0.1.0"
+description = "Few-shot and TF-IDF classifiers for OECD CRS health-sector purpose codes, with a Vertex AI deployment path for FLAN-UL2"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "numpy>=1.26,<3",
+    "pandas>=2.2,<4",
+    "scikit-learn>=1.4,<2",
+    "matplotlib>=3.8,<4",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "ruff>=0.6,<1"]
+sbert = ["sentence-transformers>=3,<6"]
+vertex = ["google-cloud-aiplatform>=1.60,<2"]
+build = ["openpyxl>=3.1,<4"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
