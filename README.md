@@ -1,150 +1,59 @@
-# oecd-aid-finance-llm-classifier
+# OECD aid purpose-code classifier
 
-Classifies OECD Creditor Reporting System health-sector aid projects into 5-digit purpose codes, given the 3-digit sector. Two TF-IDF baselines are measured here: 74.1% test accuracy for the best of them. A few-shot LLM classifier built on the same split is wired in but has not been run in this repo.
+This classifier reads the text of a real OECD aid project and assigns its 5-digit purpose code, which says what the money pays for. On 645 held-out health projects from 2024, a TF-IDF logistic regression (a standard word-based model) gets 74.1% right across 17 codes. Answering only when confident, it handles 59% of projects at 88% precision and leaves the rest for a person.
+
+It shows how I clean a 370,264-row government file into a leakage-safe dataset, choose models on validation data, route unsure cases to human review, design a few-shot LLM prompt, and write cloud deployment code with a cost estimate. The LLM classifier is built and tested but not yet run on a real model.
 
 ![Test accuracy by purpose code for the two baselines](assets/figure1_per_code_accuracy.png)
 
-## The problem
+## Why this project
 
-Every aid project reported to the OECD's Creditor Reporting System carries a purpose code that says what the money is for. The code has three levels. The 3-digit sector is the coarse one (121 Health, General; 122 Basic Health; 123 Non-communicable diseases). The 5-digit purpose code is the fine one (12262 Malaria control, 12263 Tuberculosis control, 12220 Basic health care, and so on). Donor agencies pick the 5-digit code themselves from the OECD's list, and the descriptions they write are free text. Checking or assigning those codes by hand is slow.
+Every aid project reported to the OECD's Creditor Reporting System (CRS) has a purpose code. The first three digits give the sector (122 Basic Health), all five the purpose (12262 Malaria control). Donors pick the codes themselves, and checking them by hand is slow work.
 
-The task here follows how it was framed at AidData in 2023: the 3-digit sector is already known, and the model chooses among the 5-digit codes under it. A model that can do this well could pre-fill codes for a reviewer, or flag projects where the stated code and the text disagree.
+In 2023, at AidData (William & Mary), I did this task with FLAN-UL2, an open 20-billion-parameter model from Google, prompted with the OECD code definitions and a few already-coded examples. On 481 hand-coded projects my best accuracy was 96.84%. That data is private and the prompt was not kept, so those numbers cannot be reproduced here and are not comparable with the ones below.
 
-## The solution
+This project rebuilds the approach on public data and measures the baseline an LLM must beat. The same pattern fits finance work such as coding transactions: a model pre-fills the code and a person checks the uncertain ones.
 
-`python src/run_pipeline.py` does the following:
+## What I built
 
-1. `src/data.py` loads a committed sample of 3,227 real CRS 2024 health-sector projects, checks its SHA-256, and splits it 60/20/20 into train, validation and test. Texts whose TF-IDF cosine similarity is 0.8 or higher always land in the same split, so no val or test text has a train text at cosine 0.8 or above under that vectoriser.
-2. `src/classifiers.py` fits two baselines, a TF-IDF logistic regression and a TF-IDF nearest-neighbour vote, and predicts a 5-digit code with a confidence.
-3. `src/evaluate.py` scores them on the test split: accuracy, macro-F1, per-sector and per-code accuracy, the most common confusions. It also picks an abstention threshold on validation and reports it once on test.
-4. The few-shot LLM classifier (`FewShotLLM`) runs only if a Vertex AI endpoint is configured. Here none was, so the pipeline records "not run". It never fabricates or caches LLM output.
-5. `results/sample_prompts.md` shows three real prompts built from the data, so you can read exactly what FLAN-UL2 would receive. `src/figure.py` draws the figure above.
+- A clean dataset. `scripts/build_sample.py` filters the OECD's 2024 bulk file to English health projects, drops duplicates and texts filed under conflicting codes, and caps each code at 250 rows: 3,227 projects over 17 codes ([filter counts](DATA.md#filters-and-row-counts)).
+- A leakage-safe split. CRS repeats text heavily, and a leaked near-copy inflates every score. I grouped near-duplicate texts (TF-IDF cosine similarity of 0.8 or more) and kept each group in one split, which a test checks.
+- Two baselines, TF-IDF logistic regression and a nearest-neighbour vote, each tuned on validation only and scored on the test split once.
+- A confidence threshold for human review, set on validation as the lowest confidence that reaches 90% precision.
+- A few-shot LLM classifier. `src/prompting.py` rebuilds the 2023 prompt from its write-up: the sector's code definitions, the 5 most similar training projects as examples, then the project, trimmed to FLAN-UL2's 2,048-token input limit. It is tested against a stand-in model, and [results/sample_prompts.md](results/sample_prompts.md) shows three real prompts.
+- Cloud deployment code. `deploy/vertex/deploy_flan_ul2.py` deploys FLAN-UL2 to Google Cloud Vertex AI and tears it down; its default dry run prints the config and hourly cost. It has not been run, and [its README](deploy/vertex/README.md) lists what is unverified.
 
-The data is public: the OECD CRS 2024 flows file and the OECD's purpose-code list. Attribution, licence text, every filter count and the dropped codes are in [DATA.md](DATA.md). Only the 2.3 MB sample is committed.
+## Results
 
-## Method
+| Model | Test accuracy | Macro-F1 | Answering only when confident |
+| :--- | ---: | ---: | :--- |
+| TF-IDF logistic regression | 74.1% | 0.672 | 59% of projects, 88.2% precision |
+| TF-IDF nearest neighbours | 70.7% | 0.642 | 39% of projects, 95.7% precision |
+| Few-shot FLAN-UL2 | not run yet | | |
 
-- Taxonomy. `config/purpose_codes.json` holds the whole official code list (all sectors, with names and the OECD's descriptions), built from the OECD workbook by `scripts/build_taxonomy.py`. The prompt's code criteria come from it.
-- Sample. `scripts/build_sample.py` keeps rows in sectors 121 to 123 whose purpose code is a 5-digit child of the sector, with a description of at least 20 words, in English by a stopword heuristic. It drops texts that carry more than one purpose code, keeps one row per distinct text, drops codes with fewer than 30 distinct texts, and caps each code at 250 rows with a fixed seed. 370,264 data lines in the bulk file become 3,227 rows over 17 codes.
-- Split. Stratified by purpose code and grouped by near-duplicate clusters. Two texts (title plus description) are joined when their TF-IDF cosine similarity is at least 0.8 (`NEAR_DUPLICATE_COSINE` in `src/data.py`); a cluster is a connected component of that relation, so a chain of similar texts stays together, and a cluster goes to one split. CRS repeats text heavily, and a leaked duplicate inflates every score. The guarantee is specific to the vectoriser in `src/settings.py`: every val and test text has cosine below 0.8 to every train text. The highest is 0.798 (val) and 0.789 (test). Pairs just under 0.8 can still sit on both sides. The 3,227 texts form 2,928 clusters; 2,857 are single texts and the largest has 28, so no cluster swallows a code. See [DATA.md](DATA.md).
-- Candidates. Every classifier only chooses among the 5-digit children of the record's sector that occur in training. A prediction outside the sector cannot happen.
-- TF-IDF logistic regression. One model per sector, unigrams and bigrams, balanced class weights. The pipeline fits C in {1, 10, 100} on train, scores each on validation, and keeps the one with the best validation macro-F1 (ties go to the smaller C). It then refits that model on train only and scores test once. Every candidate's validation scores are in `results/metrics.json`.
-- TF-IDF nearest neighbours. Cosine similarity within the sector, the k nearest training projects vote weighted by similarity; k in {3, 5, 10} is chosen on validation by macro-F1 in the same way. Confidence is the winner's share of the vote.
-- Abstention. For each baseline, the threshold is the lowest confidence at which validation precision on answered projects reaches 90%. It is chosen on validation and applied once to test.
-- Few-shot LLM. `src/prompting.py` builds the prompt: a reading-comprehension and text-categorisation instruction, the OECD criteria for that sector's codes, then k=5 labelled examples as input/output pairs, then the project to code. `src/retrieval.py` picks the examples by similarity within the sector (TF-IDF by default; an optional SBERT retriever follows the 2023 setup). The most similar example goes last. FLAN-UL2 accepts 2048 input tokens, so the least similar examples are dropped until the prompt fits. Token counts are character-based estimates that err high, because the T5 tokenizer is not a dependency; pass a real tokenizer to `build_prompt` to replace them. The model's output must be one of the sector's valid codes. Anything else is an abstention, counted as wrong, and reported as a parse failure.
-- Deployment. `deploy/vertex/` holds a script that deploys FLAN-UL2 to a Vertex AI endpoint and tears it down, with a cost note. See [deploy/vertex/README.md](deploy/vertex/README.md). It has never been run.
+Macro-F1 averages over codes, so small codes count as much as large ones.
 
-The prompt is a reconstruction. The prompt used in 2023 was not kept, so `src/prompting.py` follows what the 2023 write-up describes.
+Codes with distinctive words are easy: malaria, tuberculosis and mental health score 82% or more with both models. Small codes and close neighbours are hard: health personnel development scores under 13% (16 test projects), and infectious disease control is often coded as COVID-19 control. The sample also drops ambiguous texts, so it is easier than the raw data.
 
-## Findings
+The FLAN-UL2 row needs a GPU endpoint, about $2.30 an hour on Vertex AI's default two-GPU machine at list price. With one set up, the pipeline fills in the row on the same test split. An LLM is worth that only if it beats the 74.1% TF-IDF reaches in under a minute on a laptop. Full tables, method and limits are in [docs/METHOD.md](docs/METHOD.md).
 
-Split sizes: 1,938 train, 644 validation, 645 test, over 17 purpose codes in three sectors. Test class sizes run from 7 to 50 projects per code.
+## Tech stack
 
-| Method | Test accuracy | Test macro-F1 |
-| :--- | ---: | ---: |
-| TF-IDF logistic regression (C=10) | 74.1% | 0.672 |
-| TF-IDF nearest neighbours (k=10) | 70.7% | 0.642 |
-| Few-shot FLAN-UL2 (k=5, TF-IDF-retrieved examples) | not run: no endpoint configured | not run |
+Python, pandas, scikit-learn, matplotlib, pytest, GitHub Actions, FLAN-UL2, Hugging Face text-generation-inference, Google Cloud Vertex AI.
 
-The LLM adapter is tested against a stand-in generator only, so the two baselines are the only measured results here. With 645 test projects the standard error of an overall accuracy near 74% is about 1.7 percentage points (binomial). Per-code figures carry far more noise.
+## What I'd do next
 
-Hyperparameters were chosen on validation, and the test split was scored once with the winner:
-
-| Method | Setting | Validation accuracy | Validation macro-F1 |
-| :--- | ---: | ---: | ---: |
-| Logistic regression | C=1 | 75.6% | 0.690 |
-| Logistic regression | C=10 (chosen) | 77.5% | 0.704 |
-| Logistic regression | C=100 | 76.9% | 0.700 |
-| Nearest neighbours | k=3 | 67.6% | 0.625 |
-| Nearest neighbours | k=5 | 68.2% | 0.626 |
-| Nearest neighbours | k=10 (chosen) | 70.8% | 0.649 |
-
-By sector, test accuracy:
-
-| Sector | Test projects | Logistic regression | Nearest neighbours |
-| :--- | ---: | ---: | ---: |
-| 121 Health, General | 176 | 75.0% | 70.5% |
-| 122 Basic Health | 404 | 73.0% | 69.6% |
-| 123 Non-communicable diseases | 65 | 78.5% | 78.5% |
-
-Worst-performing codes on test (ordered by logistic regression):
-
-| Code | Test projects | Logistic regression | Nearest neighbours |
-| :--- | ---: | ---: | ---: |
-| 12281 Health personnel development | 16 | 6.3% | 12.5% |
-| 12310 NCDs control, general | 7 | 14.3% | 14.3% |
-| 12350 Other prevention and treatment of NCDs | 9 | 33.3% | 33.3% |
-| 12181 Medical education/training | 26 | 46.2% | 34.6% |
-| 12220 Basic health care | 50 | 54.0% | 56.0% |
-
-Four of these five are among the smallest codes in the sample (80, 36, 45 and 129 distinct texts). The most frequent mistakes sit between neighbouring codes: 12250 Infectious disease control predicted as 12264 COVID-19 control (10 projects for the logistic regression, 11 for the vote), 12191 Medical services predicted as 12110 Health policy and administrative management (9 and 9), 12110 predicted as 12182 Medical research (10 for the logistic regression), and 12181 predicted as 12191 (13 for the vote). Mental health (12340), NCD research (12382), malaria (12262), tuberculosis (12263) and medical research (12182) are the easiest codes, at 82% or more for both baselines.
-
-Answering only when confident, with the threshold chosen on validation as the lowest confidence that reaches 90% precision there:
-
-| Method | Threshold | Validation coverage / precision | Test coverage / precision | Test projects answered |
-| :--- | ---: | ---: | ---: | ---: |
-| TF-IDF logistic regression | 0.515 | 62.7% / 90.1% | 59.1% / 88.2% | 381 of 645 |
-| TF-IDF nearest neighbours | 0.729 | 40.7% / 90.1% | 39.2% / 95.7% | 253 of 645 |
-
-Coverage is the share of projects the model answers. Precision is accuracy on those. The rest would go to a human. The test row is a single read-out and was not tuned further. The logistic regression's test precision, 88.2%, lands below the 90% target, so the validation-chosen threshold does not transfer exactly.
-
-All numbers are in `results/metrics.json`, and the CI run regenerates them.
-
-## How this relates to the 2023 work
-
-At AidData (William & Mary) in 2023, I framed 5-digit coding as sequence-to-sequence generation with FLAN-UL2 (20B, instruction-tuned, encoder-decoder), prompted with task instructions containing the OECD sector guidelines plus in-context input/output examples. The data was 481 hand-coded, verified historical Chinese health-sector aid projects in Africa (1965 to 1999), using title and description only, with about 12 five-digit codes. As the 2023 write-up reported:
-
-- 88% with 0-shot prompting.
-- 92% (k=5) and 95% (k=7) with hand-picked examples.
-- With semantic-similarity example selection (SBERT embeddings, after Liu et al. 2021), an average above 96% for k=5, 8 and 10, with the best result, 96.84%, at k=10.
-- Reversing the order of the examples changed little.
-- k was limited by FLAN-UL2's 2048-token context.
-
-The write-up proposed per-sector prompts keyed on the 3-digit code for other sectors. This repo builds that structure.
-
-Those numbers come from the 2023 write-up and a dataset that is not public, so this repo cannot reproduce them. The 2023 data was one sector, hand-verified, in one region and period, with about 12 codes. This sample has 17 codes across three sectors, labelled by the donor agencies that reported them, from a single year of flows. The 2023 percentages and the 74.1% above are not comparable, and the baselines here say nothing about whether FLAN-UL2 would repeat its 2023 results on this data. The original 2023 prompt was not kept.
-
-What this repo adds is a public dataset and split, baselines to beat, and the prompt, retrieval, parsing and deployment code, so that someone with a GPU endpoint can run `python src/run_pipeline.py` and get an LLM row measured on the same test split. A few-shot LLM is only worth its hourly cost if it beats the 74.1% that TF-IDF reaches in seconds.
-
-## Limits
-
-- The LLM row is empty. Nothing in `src/classifiers.py::FewShotLLM` has run against a real model, and the Vertex AI deployment script has never been run (see [deploy/vertex/README.md](deploy/vertex/README.md) for what is unverified, including whether FLAN-UL2 fits on the default machine). Tests exercise both through stand-ins that live in `tests/`.
-- The prompt is reconstructed from a description, and its token counts are estimates.
-- One year of flows (2024), health sectors only, English only. The labels are whatever the reporting agency chose, so some are wrong or arbitrary, and a model can only learn their habits.
-- The sample is cleaner than the raw file. Texts reported under more than one code were dropped (8,910 rows), which removes many genuinely ambiguous cases. It is also capped at 250 per code, so class proportions differ from the real data.
-- Small codes make the test set noisy. Three codes have 7, 9 and 16 test projects, and macro-F1 moves with each one. There is one random split and no repeated runs or confidence intervals.
-- Near-duplicate grouping is defined by a TF-IDF cosine of 0.8 under one vectoriser. A paraphrase at a lower cosine, or one a different embedding would rank as close, can still sit in both train and test. Grouping also keeps close siblings together, so a cluster of near-identical projects in the test split counts as several test cases.
-- The sector is given. In practice a project's 3-digit code is often unknown too, and this task does not test that.
-- Text keeps the source's encoding errors. Two codes (12320 Tobacco use control, 12330 Control of harmful use of alcohol and drugs) are missing for lack of examples, and the voluntary code 12196 has no rows. The list of dropped codes is in [DATA.md](DATA.md).
-- The OECD sample text may be subject to third-party rights; see [DATA.md](DATA.md).
+- Deploy FLAN-UL2, measure the LLM row, then tear the endpoint down.
+- Try SBERT example retrieval, as in 2023 (written, not yet in the default run).
+- Predict the 3-digit sector too; in practice it is often unknown.
 
 ## Run it
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt pytest
-python src/run_pipeline.py   # no download needed; writes results/ and assets/
+python src/run_pipeline.py   # no download; rewrites results/ and the figure
 pytest -q
 ```
 
-Running the pipeline reads `data/crs_health_2024_sample.csv`, verifies its checksum, and rewrites `results/metrics.json`, `results/sample_prompts.md` and the figure. CI runs ruff, the pipeline and pytest on Python 3.11 to 3.13, offline.
-
-To rebuild the data from the OECD source (needs `openpyxl`, and a 46 MB download):
-
-```bash
-pip install openpyxl
-python scripts/build_taxonomy.py --download
-python scripts/build_sample.py --download
-```
-
-To measure the LLM row, deploy FLAN-UL2 with `deploy/vertex/deploy_flan_ul2.py` (it costs money while running; read its README first), then:
-
-```bash
-pip install google-cloud-aiplatform
-export VERTEX_PROJECT=... VERTEX_REGION=... VERTEX_ENDPOINT_ID=...
-python src/run_pipeline.py
-```
-
-For SBERT example retrieval as in 2023, `pip install sentence-transformers` and use `SbertRetriever` from `src/retrieval.py` in place of `TfidfRetriever`. It is not wired into the default run.
-
-MIT licensed. The sample data is the OECD's; see [DATA.md](DATA.md).
+To rebuild the data or run the LLM row, see [docs/METHOD.md](docs/METHOD.md#other-commands). MIT licensed; the data is the OECD's, cited in [DATA.md](DATA.md).
