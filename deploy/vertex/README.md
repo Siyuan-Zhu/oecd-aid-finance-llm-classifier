@@ -21,8 +21,8 @@ Prices are Vertex AI online-prediction list prices from <https://cloud.google.co
 redirects to <https://cloud.google.com/products/gemini-enterprise-agent-platform/pricing>), read on 2026-10-23. The
 page shows no date, and the region of the figures was not confirmed; the Iowa (us-central1) column was listed first.
 The per-day and per-30-day columns are the hourly price multiplied out. Billing runs in 30-second increments. Network
-and storage are extra. Run `--undeploy` as soon as an evaluation finishes. A full test split of 645 prompts is a
-short job; the 40 GB weight download and load at start-up is the slow part.
+and storage are extra. Run `--undeploy` as soon as an evaluation finishes. Start-up also bills: the node is up while
+the 40 GB of weights download and load.
 
 ## Run it
 

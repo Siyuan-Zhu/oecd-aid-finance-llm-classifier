@@ -111,6 +111,7 @@ class Report:
     def __init__(self):
         self.steps: list[tuple[str, int]] = []
         self.dropped_codes: dict[str, int] = {}
+        self.available_per_code: dict[str, int] = {}
         self.final_per_code: dict[str, int] = {}
 
     def add(self, name: str, n: int) -> None:
@@ -186,6 +187,7 @@ def build_sample(rows, min_per_code: int = MIN_PER_CODE, cap: int = CAP_PER_CODE
             pool = random.Random(f"{seed}:{code}").sample(pool, cap)
         chosen.extend(sorted(pool, key=lambda r: (text_of(r).lower(), r["CrsID"])))
     report.add(f"capped at {cap} per code", len(chosen))
+    report.available_per_code = {code: len(rs) for code, rs in sorted(by_code.items())}
     report.final_per_code = {code: min(len(rs), cap) for code, rs in sorted(by_code.items())}
 
     sample = [
@@ -233,6 +235,7 @@ def main(argv=None) -> int:
     for name, n in report:
         print(f"{n:>9,}  {name}")
     print("codes dropped for too few distinct texts:", report.dropped_codes or "none")
+    print("distinct texts per code before the cap:", report.available_per_code)
     print("final rows per code:", report.final_per_code)
     digest = write_sample(sample, args.out)
     print(f"wrote {args.out} ({args.out.stat().st_size:,} bytes, {len(sample)} rows)")

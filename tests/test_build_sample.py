@@ -115,6 +115,7 @@ def test_codes_below_the_minimum_are_dropped_and_listed():
     assert {r["purpose_code"] for r in sample} == {"12262"}
     assert counts(report)["codes with at least 30 distinct texts"] == 35
     assert report.dropped_codes == {"12263": 5}
+    assert report.available_per_code == {"12262": 35}   # distinct texts per kept code, before the cap
 
 
 def test_cap_per_code_is_applied_with_a_fixed_seed():
