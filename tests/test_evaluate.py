@@ -3,8 +3,8 @@
 import pytest
 
 from src.classifiers import Prediction
-from src.evaluate import apply_threshold, choose_threshold, evaluate, selective
-from tests.fakes import make_record
+from src.evaluate import apply_threshold, choose_threshold, evaluate, select_by_validation, selective
+from tests.fakes import ConstantClassifier, make_record
 
 
 def pred(code5, confidence=1.0):
@@ -12,7 +12,10 @@ def pred(code5, confidence=1.0):
 
 
 # Truth: A A A B B C (A=12262, B=12263 in sector 122; C=12340 in sector 123)
-RECORDS = [make_record(1, "text 1", "12262"), make_record(2, "text 2", "12262"), make_record(3, "text 3", "12262"), make_record(4, "text 4", "12263"), make_record(5, "text 5", "12263"), make_record(6, "text 6", "12340")]
+RECORDS = [
+    make_record(i, f"text {i}", code)
+    for i, code in enumerate(["12262", "12262", "12262", "12263", "12263", "12340"], start=1)
+]
 
 
 def test_accuracy_counts_abstentions_as_wrong():
@@ -60,7 +63,10 @@ def test_apply_threshold_abstains_below_the_threshold():
 
 
 def test_selective_reports_coverage_and_precision_among_answered():
-    preds = [pred("12262", 0.9), pred("12263", 0.9), pred("12263", 0.9), pred(None, 0.0), pred("12263", 0.9), pred("12340", 0.9)]
+    preds = [
+        pred("12262", 0.9), pred("12263", 0.9), pred("12263", 0.9), pred(None, 0.0), pred("12263", 0.9),
+        pred("12340", 0.9),
+    ]
     result = selective(preds, RECORDS)
     assert result.answered == 5
     assert result.coverage == pytest.approx(5 / 6)
@@ -71,7 +77,10 @@ def test_selective_reports_coverage_and_precision_among_answered():
 
 def test_choose_threshold_takes_the_widest_coverage_that_meets_the_precision_target():
     # confidence rises with correctness: wrong answers are the low-confidence ones
-    preds = [pred("12262", 0.95), pred("12262", 0.9), pred("12263", 0.3), pred("12263", 0.85), pred("12262", 0.2), pred("12340", 0.8)]
+    preds = [
+        pred("12262", 0.95), pred("12262", 0.9), pred("12263", 0.3), pred("12263", 0.85), pred("12262", 0.2),
+        pred("12340", 0.8),
+    ]
     # truth: 12262 12262 12262 12263 12263 12340 -> right, right, wrong, right, wrong, right
     threshold = choose_threshold(preds, RECORDS, target_precision=1.0)
     assert threshold == pytest.approx(0.8)
@@ -83,3 +92,20 @@ def test_choose_threshold_takes_the_widest_coverage_that_meets_the_precision_tar
 def test_choose_threshold_falls_back_to_answering_everything_when_no_threshold_meets_the_target():
     preds = [pred("12263", 0.9)] * 6
     assert choose_threshold(preds, RECORDS, target_precision=0.99) == 0.0
+
+
+def test_select_by_validation_picks_the_value_with_the_best_val_macro_f1_and_lists_every_candidate():
+    val = [make_record(i, f"t{i}", "12263") for i in range(3)] + [make_record(9, "t9", "12262")]
+    grid = ["12262", "12263", "12240"]
+    selection = select_by_validation(ConstantClassifier, grid, train=[], val=val)
+    assert selection.best == "12263"
+    assert [c.value for c in selection.candidates] == grid
+    assert [round(c.val_accuracy, 2) for c in selection.candidates] == [0.25, 0.75, 0.0]
+    assert selection.metric == "macro_f1"
+
+
+def test_select_by_validation_breaks_ties_toward_the_earlier_grid_value():
+    val = [make_record(1, "t1", "12262")]
+    assert select_by_validation(ConstantClassifier, ["12262", "12262"], [], val).best == "12262"
+    selection = select_by_validation(lambda v: ConstantClassifier("12263"), [10, 1], [], val)
+    assert selection.best == 10

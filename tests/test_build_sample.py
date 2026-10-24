@@ -28,8 +28,11 @@ def row(crs_id="1", sector="122", purpose="12262", title="Malaria project", text
 
 def many(code, sector, n, prefix):
     """n rows with distinct English texts, so no filter except the minimum-per-code one touches them."""
-    return [row(f"{prefix}{i}", sector, code, f"{prefix} title {i}", f"{ENGLISH} Case {prefix} number {chr(97 + i % 26)}{i}.")
-            for i in range(n)]
+    return [
+        row(f"{prefix}{i}", sector, code, f"{prefix} title {i}",
+            f"{ENGLISH} Case {prefix} number {chr(97 + i % 26)}{i}.")
+        for i in range(n)
+    ]
 
 
 def counts(report):

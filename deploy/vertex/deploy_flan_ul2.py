@@ -93,7 +93,9 @@ def _sdk(project: str, region: str):
     try:
         aiplatform = importlib.import_module("google.cloud.aiplatform")
     except ImportError as error:
-        raise SystemExit("google-cloud-aiplatform is needed for --deploy/--undeploy: pip install google-cloud-aiplatform") from error
+        raise SystemExit(
+            "google-cloud-aiplatform is needed for --deploy/--undeploy: pip install google-cloud-aiplatform"
+        ) from error
     aiplatform.init(project=project, location=region)
     return aiplatform
 
@@ -120,7 +122,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--profile", choices=sorted(PROFILES), default="l4x2")
     parser.add_argument("--dry-run", action="store_true", help="print the config and call nothing (the default)")
-    parser.add_argument("--deploy", action="store_true", help="create the model and endpoint and deploy (starts billing)")
+    parser.add_argument(
+        "--deploy", action="store_true", help="create the model and endpoint and deploy (starts billing)"
+    )
     parser.add_argument("--undeploy", action="store_true", help="undeploy and delete the endpoint (and model if given)")
     parser.add_argument("--project", help="Google Cloud project id")
     parser.add_argument("--region", help="for example us-central1")
@@ -137,7 +141,8 @@ def main(argv: list[str] | None = None) -> int:
 
     config = build_config(args.profile)
     if args.deploy:
-        print(f"deploying {MODEL_ID} on {config['deploy']['machine_type']}; billing starts when the node is up", file=sys.stderr)
+        machine = config["deploy"]["machine_type"]
+        print(f"deploying {MODEL_ID} on {machine}; billing starts when the node is up", file=sys.stderr)
         print(json.dumps(deploy(config, args.project, args.region), indent=2))
     elif args.undeploy:
         undeploy(args.project, args.region, args.endpoint_id, args.model_id)

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable
+from dataclasses import dataclass
 
 from src.data import Record
 from src.settings import MAX_INPUT_TOKENS, RESERVED_TOKENS
@@ -24,6 +25,14 @@ CHARS_PER_TOKEN = 3.5    # English prose is about 4 characters per SentencePiece
 
 def approx_tokens(text: str) -> int:
     return math.ceil(len(text) / CHARS_PER_TOKEN)
+
+
+@dataclass(frozen=True)
+class Prompt:
+    """The prompt text and the examples that fit in it, most similar first."""
+
+    text: str
+    examples: list[Record]
 
 
 def _instruction(sector_code: str, sector_name: str, candidates: list[PurposeCode]) -> str:
@@ -56,7 +65,7 @@ def build_prompt(
     max_tokens: int = MAX_INPUT_TOKENS,
     reserve_tokens: int = RESERVED_TOKENS,
     count_tokens: Callable[[str], int] = approx_tokens,
-) -> str:
+) -> Prompt:
     """Prompt for `record`. `examples` come most similar first (retriever order) and are shown in reverse.
 
     `candidates` defaults to the sector's core (non-voluntary) codes. If the prompt is over budget, the least
@@ -75,7 +84,7 @@ def build_prompt(
     while kept and count_tokens(render(kept, record.text)) > budget:
         kept.pop()
     if count_tokens(render(kept, record.text)) <= budget:
-        return render(kept, record.text)
+        return Prompt(render(kept, record.text), kept)
 
     words = record.text.split()
     low, high = 0, len(words)
@@ -85,4 +94,4 @@ def build_prompt(
             low = mid
         else:
             high = mid - 1
-    return render([], " ".join(words[:low]))
+    return Prompt(render([], " ".join(words[:low])), [])

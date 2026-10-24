@@ -16,11 +16,15 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 from typing import Protocol
 
+from src.settings import MODEL_ID
+
 ENV_VARS = ("VERTEX_PROJECT", "VERTEX_REGION", "VERTEX_ENDPOINT_ID")
 MAX_NEW_TOKENS = 8   # a 5-digit code is a handful of SentencePiece tokens
 
 
 class TextGenerator(Protocol):
+    model_id: str   # which model answers; written into results/metrics.json
+
     def generate(self, prompts: list[str]) -> list[str]: ...
 
 
@@ -28,18 +32,19 @@ class LLMNotConfigured(RuntimeError):
     """No Vertex AI endpoint is configured in the environment."""
 
 
-class UnconfiguredGenerator:
-    """Placeholder used when no endpoint is configured. It never returns text; calling it raises."""
-
-    def __init__(self, reason: str):
-        self.reason = reason
-
-    def generate(self, prompts: list[str]) -> list[str]:
-        raise LLMNotConfigured(self.reason)
-
-
 class VertexEndpointGenerator:
-    def __init__(self, project: str, region: str, endpoint_id: str, endpoint=None, max_workers: int = 4):
+    def __init__(
+        self,
+        project: str,
+        region: str,
+        endpoint_id: str,
+        endpoint=None,
+        max_workers: int = 4,
+        model_id: str = MODEL_ID,
+    ):
+        # The endpoint does not report what it serves. model_id is what deploy_flan_ul2.py deploys; pass another
+        # value if the endpoint was set up differently.
+        self.model_id = model_id
         self.project = project
         self.region = region
         self.endpoint_id = endpoint_id
@@ -50,7 +55,7 @@ class VertexEndpointGenerator:
     def from_env(cls) -> VertexEndpointGenerator:
         missing = [name for name in ENV_VARS if not os.environ.get(name)]
         if missing:
-            raise LLMNotConfigured("LLM endpoint not configured; set " + ", ".join(missing))
+            raise LLMNotConfigured("no endpoint configured: set " + ", ".join(missing))
         return cls(os.environ["VERTEX_PROJECT"], os.environ["VERTEX_REGION"], os.environ["VERTEX_ENDPOINT_ID"])
 
     def _get_endpoint(self):

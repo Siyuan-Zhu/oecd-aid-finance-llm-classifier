@@ -121,3 +121,23 @@ def load_splits(path: Path | None = None, expected_sha256: str | None = SAMPLE_S
     test, val = parts[0], parts[1]
     train = [r for part in parts[2:] for r in part]
     return Splits(train=train, val=val, test=test)
+
+
+def split_statistics(splits: Splits) -> dict:
+    """Group sizes, and the highest TF-IDF cosine between any val or test text and any train text."""
+    texts = [r.text for r in splits.train + splits.val + splits.test]
+    sizes = Counter(near_duplicate_groups(texts))
+    matrix = make_vectorizer().fit_transform(texts)
+    n_train, n_val = len(splits.train), len(splits.val)
+    train = matrix[:n_train]
+    worst = (matrix[n_train:] @ train.T).max(axis=1).toarray().ravel()
+    return {
+        "near_duplicate_cosine": NEAR_DUPLICATE_COSINE,
+        "components": len(sizes),
+        "largest_component": max(sizes.values()),
+        "singleton_components": sum(1 for size in sizes.values() if size == 1),
+        "max_cosine_to_train": {
+            "val": round(float(worst[:n_val].max()), 4),
+            "test": round(float(worst[n_val:].max()), 4),
+        },
+    }

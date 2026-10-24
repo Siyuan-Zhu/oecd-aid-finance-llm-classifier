@@ -7,9 +7,10 @@ threshold for the baselines is chosen on val and applied once to test.
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 
-from src.classifiers import Prediction
+from src.classifiers import Classifier, Prediction
 from src.data import Record
 
 
@@ -118,3 +119,39 @@ def choose_threshold(predictions: list[Prediction], records: list[Record], targe
         if result.answered and result.precision >= target_precision and result.coverage > best_coverage:
             best_threshold, best_coverage = candidate, result.coverage
     return best_threshold
+
+
+@dataclass(frozen=True)
+class Candidate:
+    value: object
+    val_accuracy: float
+    val_macro_f1: float
+
+
+@dataclass(frozen=True)
+class Selection:
+    metric: str
+    best: object
+    candidates: list[Candidate]
+
+
+def select_by_validation(
+    make: Callable[[object], Classifier],
+    grid: Sequence,
+    train: list[Record],
+    val: list[Record],
+    metric: str = "macro_f1",
+) -> Selection:
+    """Fit `make(value)` on train for every value in the grid and score it on val.
+
+    The best value is the one with the highest val macro-F1 (or accuracy, if `metric="accuracy"`); ties go to the
+    earlier value in the grid. Test records never enter here. The caller refits the winner on train and scores it
+    on test once.
+    """
+    candidates = []
+    for value in grid:
+        scores = evaluate(make(value).fit(train).predict(val), val)
+        candidates.append(Candidate(value, scores.accuracy, scores.macro_f1))
+    key = (lambda c: c.val_macro_f1) if metric == "macro_f1" else (lambda c: c.val_accuracy)
+    best = max(candidates, key=key)   # max() keeps the first of equal candidates
+    return Selection(metric=metric, best=best.value, candidates=candidates)

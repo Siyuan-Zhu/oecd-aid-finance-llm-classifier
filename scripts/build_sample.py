@@ -55,8 +55,13 @@ _EN = set(
     "the and of to in for with by is are on as be an will this from that which at or it has have their these also "
     "through its was were can been such between more other all not who into than each".split()
 )
-_FR = set("le la les des du de et en pour une un dans au aux est sur par avec qui que ce cette ces sont son ses leur leurs afin ainsi entre plus ou à été".split())
-_ES = set("el los las del de y en para una un con por que se su sus es al como más entre este esta estos estas o".split())
+_FR = set(
+    "le la les des du de et en pour une un dans au aux est sur par avec qui que ce cette ces sont son ses leur leurs "
+    "afin ainsi entre plus ou à été".split()
+)
+_ES = set(
+    "el los las del de y en para una un con por que se su sus es al como más entre este esta estos estas o".split()
+)
 _WORD = re.compile(r"[A-Za-zÀ-ÿ']+")
 
 
@@ -145,7 +150,9 @@ def build_sample(rows, min_per_code: int = MIN_PER_CODE, cap: int = CAP_PER_CODE
         return any(c.code == purpose for c in taxonomy.children(sector))
 
     rows_ = keep("purpose code is a 5-digit child of the sector", health, is_child)
-    rows_ = keep("long description has at least 20 words", rows_, lambda r: word_count(r["LongDescription"]) >= MIN_WORDS)
+    rows_ = keep(
+        "long description has at least 20 words", rows_, lambda r: word_count(r["LongDescription"]) >= MIN_WORDS
+    )
     rows_ = keep("English by stopword heuristic", rows_, lambda r: looks_english(r["LongDescription"]))
     rows_ = keep(
         "boilerplate removed",

@@ -22,7 +22,7 @@ from sklearn.linear_model import LogisticRegression
 
 from src.data import Record
 from src.llm import TextGenerator
-from src.prompting import build_prompt
+from src.prompting import Prompt, build_prompt
 from src.retrieval import Retriever
 from src.settings import make_vectorizer
 from src.taxonomy import Taxonomy, load_taxonomy
@@ -47,23 +47,23 @@ def _candidates_by_sector(train: list[Record], taxonomy: Taxonomy) -> dict[str, 
     seen: dict[str, set[str]] = defaultdict(set)
     for record in train:
         seen[record.code3].add(record.code5)
-    out = {}
-    for code3, labels in seen.items():
-        out[code3] = [c.code for c in taxonomy.children(code3) if c.code in labels]
-    return out
+    return {
+        code3: [c.code for c in taxonomy.children(code3) if c.code in labels] for code3, labels in seen.items()
+    }
+
+
+class _SectorModel(Protocol):
+    def predict(self, texts: list[str]) -> list[Prediction]: ...
 
 
 class _PerSector:
-    """Fits one sub-model per sector; subclasses define how a sector model is fitted and how it predicts."""
+    """Fits one sub-model per sector. Subclasses define `_fit_sector(texts, labels) -> _SectorModel`."""
 
     def __init__(self, taxonomy: Taxonomy | None = None):
         self._taxonomy = taxonomy or load_taxonomy()
-        self._models: dict[str, object] = {}
+        self._models: dict[str, _SectorModel] = {}
 
-    def _fit_sector(self, texts: list[str], labels: list[str]):
-        raise NotImplementedError
-
-    def _predict_sector(self, model, texts: list[str]) -> list[Prediction]:
+    def _fit_sector(self, texts: list[str], labels: list[str]) -> _SectorModel:
         raise NotImplementedError
 
     def fit(self, train: list[Record]):
@@ -78,22 +78,44 @@ class _PerSector:
         return self
 
     def predict(self, records: list[Record]) -> list[Prediction]:
-        out: list[Prediction | None] = [None] * len(records)
+        out = [Prediction(None, 0.0)] * len(records)    # a sector never seen in training abstains
         positions: dict[str, list[int]] = defaultdict(list)
         for i, record in enumerate(records):
             positions[record.code3].append(i)
         for code3, idx in positions.items():
-            if code3 not in self._models:
-                for i in idx:
-                    out[i] = Prediction(None, 0.0)
-                continue
-            for i, prediction in zip(idx, self._predict_sector(self._models[code3], [records[i].text for i in idx])):
-                out[i] = prediction
-        return out  # type: ignore[return-value]
+            if code3 in self._models:
+                for i, prediction in zip(idx, self._models[code3].predict([records[i].text for i in idx])):
+                    out[i] = prediction
+        return out
+
+
+class _ConstantSector:
+    """A sector with one training code: always answers it."""
+
+    def __init__(self, label: str):
+        self._label = label
+
+    def predict(self, texts):
+        return [Prediction(self._label, 1.0) for _ in texts]
+
+
+class _LogRegSector:
+    def __init__(self, texts: list[str], labels: list[str], C: float):
+        self._vectorizer = make_vectorizer()
+        self._model = LogisticRegression(C=C, class_weight="balanced", max_iter=2000)
+        self._model.fit(self._vectorizer.fit_transform(texts), labels)
+
+    def predict(self, texts):
+        probabilities = self._model.predict_proba(self._vectorizer.transform(texts))
+        best = probabilities.argmax(axis=1)
+        return [Prediction(str(self._model.classes_[b]), float(p[b])) for b, p in zip(best, probabilities)]
 
 
 class TfidfLogReg(_PerSector):
-    """C=10 with balanced class weights; C was picked from {1, 10, 100} on val."""
+    """TF-IDF features, balanced class weights, regularisation strength C (smaller is stronger).
+
+    The default C is a starting point. The pipeline sweeps C on val and uses the best value.
+    """
 
     def __init__(self, taxonomy: Taxonomy | None = None, C: float = 10.0):
         super().__init__(taxonomy)
@@ -101,28 +123,40 @@ class TfidfLogReg(_PerSector):
 
     def _fit_sector(self, texts, labels):
         if len(set(labels)) == 1:
-            return ("constant", labels[0])
-        vectorizer = make_vectorizer()
-        matrix = vectorizer.fit_transform(texts)
-        model = LogisticRegression(C=self._C, class_weight="balanced", max_iter=2000)
-        model.fit(matrix, labels)
-        return ("model", vectorizer, model)
+            return _ConstantSector(labels[0])
+        return _LogRegSector(texts, labels, self._C)
 
-    def _predict_sector(self, model, texts):
-        if model[0] == "constant":
-            return [Prediction(model[1], 1.0) for _ in texts]
-        _, vectorizer, classifier = model
-        probabilities = classifier.predict_proba(vectorizer.transform(texts))
-        best = probabilities.argmax(axis=1)
-        return [Prediction(str(classifier.classes_[b]), float(p[b])) for b, p in zip(best, probabilities)]
+
+class _KnnSector:
+    def __init__(self, texts: list[str], labels: list[str], k: int):
+        self._vectorizer = make_vectorizer()
+        self._matrix = self._vectorizer.fit_transform(texts)
+        self._labels = labels
+        self._k = k
+        self._majority = Counter(labels).most_common(1)[0][0]
+
+    def predict(self, texts):
+        similarities = (self._vectorizer.transform(texts) @ self._matrix.T).toarray()
+        out = []
+        for row in similarities:
+            votes: dict[str, float] = defaultdict(float)
+            for j in np.argsort(-row, kind="stable")[: self._k]:
+                votes[self._labels[j]] += float(row[j])
+            total = sum(votes.values())
+            if total <= 0:
+                out.append(Prediction(self._majority, 0.0))
+                continue
+            winner = max(sorted(votes), key=lambda c: votes[c])
+            out.append(Prediction(winner, votes[winner] / total))
+        return out
 
 
 class TfidfKnn(_PerSector):
     """Cosine similarity over TF-IDF vectors; the k nearest training records vote, weighted by similarity.
-    k=10 was picked from {3, 5, 10} on val.
 
     Confidence is the winning class's share of the total similarity weight among the k neighbours. With no word
-    overlap at all, the sector's most common training code is returned with confidence 0.
+    overlap at all, the sector's most common training code is returned with confidence 0. The default k is a
+    starting point. The pipeline sweeps k on val and uses the best value.
     """
 
     def __init__(self, taxonomy: Taxonomy | None = None, k: int = 10):
@@ -130,35 +164,49 @@ class TfidfKnn(_PerSector):
         self._k = k
 
     def _fit_sector(self, texts, labels):
-        vectorizer = make_vectorizer()
-        return (vectorizer, vectorizer.fit_transform(texts), labels)
-
-    def _predict_sector(self, model, texts):
-        vectorizer, matrix, labels = model
-        majority = Counter(labels).most_common(1)[0][0]
-        similarities = (vectorizer.transform(texts) @ matrix.T).toarray()
-        out = []
-        for row in similarities:
-            nearest = np.argsort(-row, kind="stable")[: self._k]
-            votes: dict[str, float] = defaultdict(float)
-            for j in nearest:
-                votes[labels[j]] += float(row[j])
-            total = sum(votes.values())
-            if total <= 0:
-                out.append(Prediction(majority, 0.0))
-                continue
-            winner = max(sorted(votes), key=lambda c: votes[c])
-            out.append(Prediction(winner, votes[winner] / total))
-        return out
+        return _KnnSector(texts, labels, self._k)
 
 
 _CODE = re.compile(r"(?<!\d)\d{5}(?!\d)")
 
 
-class FewShotLLM:
-    """k most similar labelled examples as input/output pairs, then the project to code; the model answers a code.
+class FewShotPrompter:
+    """Builds the few-shot prompt for a record: sector criteria plus its k most similar labelled examples.
 
-    `retriever_factory(train)` builds the retriever over the training records when `fit` is called.
+    `retriever_factory(train)` is called in `fit`, because a retriever needs the training pool to search. That is
+    why this takes a factory and not a ready-made retriever.
+    """
+
+    def __init__(
+        self,
+        retriever_factory: Callable[[list[Record]], Retriever],
+        k: int = 5,
+        taxonomy: Taxonomy | None = None,
+    ):
+        self._retriever_factory = retriever_factory
+        self._k = k
+        self._taxonomy = taxonomy or load_taxonomy()
+        self._retriever: Retriever | None = None
+        self.candidates: dict[str, list[str]] = {}
+
+    def fit(self, train: list[Record]) -> FewShotPrompter:
+        self._retriever = self._retriever_factory(train)
+        self.candidates = _candidates_by_sector(train, self._taxonomy)
+        return self
+
+    def prompt_for(self, record: Record) -> Prompt:
+        if self._retriever is None:
+            raise RuntimeError("call fit() first")
+        valid = set(self.candidates.get(record.code3, ()))
+        offered = [c for c in self._taxonomy.children(record.code3) if c.code in valid]
+        return build_prompt(record, self._retriever.top_k(record, self._k), self._taxonomy, candidates=offered)
+
+
+class FewShotLLM:
+    """The prompt from FewShotPrompter, sent to a TextGenerator; the model answers with a 5-digit code.
+
+    The constructor takes a retriever factory instead of a retriever because the retriever searches the training
+    records, which exist only when `fit(train)` is called.
     """
 
     def __init__(
@@ -169,33 +217,23 @@ class FewShotLLM:
         taxonomy: Taxonomy | None = None,
     ):
         self._generator = generator
-        self._retriever_factory = retriever_factory
-        self._k = k
-        self._taxonomy = taxonomy or load_taxonomy()
-        self._retriever: Retriever | None = None
-        self._candidates: dict[str, list[str]] = {}
+        self._prompter = FewShotPrompter(retriever_factory, k, taxonomy)
         self.parse_failures = 0
 
     def fit(self, train: list[Record]) -> FewShotLLM:
-        self._retriever = self._retriever_factory(train)
-        self._candidates = _candidates_by_sector(train, self._taxonomy)
+        self._prompter.fit(train)
         self.parse_failures = 0
         return self
 
-    def prompt_for(self, record: Record) -> str:
-        assert self._retriever is not None, "call fit() first"
-        valid = set(self._candidates.get(record.code3, ()))
-        offered = [c for c in self._taxonomy.children(record.code3) if c.code in valid]
-        examples = self._retriever.top_k(record, self._k)
-        return build_prompt(record, examples, self._taxonomy, candidates=offered)
-
     def predict(self, records: list[Record]) -> list[Prediction]:
-        askable = [i for i, r in enumerate(records) if self._candidates.get(r.code3)]
-        answers = self._generator.generate([self.prompt_for(records[i]) for i in askable]) if askable else []
+        candidates = self._prompter.candidates
+        askable = [i for i, r in enumerate(records) if candidates.get(r.code3)]
+        prompts = [self._prompter.prompt_for(records[i]).text for i in askable]
+        answers = self._generator.generate(prompts) if prompts else []
         out = [Prediction(None, 0.0)] * len(records)
         for i, answer in zip(askable, answers):
             match = _CODE.search(answer)
-            if match and match.group() in self._candidates[records[i].code3]:
+            if match and match.group() in candidates[records[i].code3]:
                 out[i] = Prediction(match.group(), 1.0)
             else:
                 self.parse_failures += 1

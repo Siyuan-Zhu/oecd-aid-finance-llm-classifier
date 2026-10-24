@@ -104,7 +104,10 @@ def main(argv=None) -> int:
     parsed = read_workbook(path)
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     OUT_PATH.write_text(json.dumps(parsed, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
-    print(f"wrote {OUT_PATH.relative_to(REPO_ROOT)}: {len(parsed['sectors'])} sectors, {len(parsed['codes'])} purpose codes")
+    print(
+        f"wrote {OUT_PATH.relative_to(REPO_ROOT)}: "
+        f"{len(parsed['sectors'])} sectors, {len(parsed['codes'])} purpose codes"
+    )
     return 0
 
 

@@ -13,6 +13,8 @@ def make_record(id, text, code5="12262", code3=None):
 class FakeTextGenerator:
     """Returns canned answers. `answers` is a list (cycled) or a function from prompt to answer."""
 
+    model_id = "fake-generator"
+
     def __init__(self, answers):
         self._answers = answers
         self.prompts: list[str] = []
@@ -22,6 +24,21 @@ class FakeTextGenerator:
         if callable(self._answers):
             return [self._answers(p) for p in prompts]
         return [self._answers[(len(self.prompts) - len(prompts) + i) % len(self._answers)] for i in range(len(prompts))]
+
+
+class ConstantClassifier:
+    """Always predicts one code. Lets the hyperparameter sweep be tested without a real model."""
+
+    def __init__(self, code5):
+        self.code5 = code5
+
+    def fit(self, train):
+        return self
+
+    def predict(self, records):
+        from src.classifiers import Prediction
+
+        return [Prediction(self.code5, 1.0) for _ in records]
 
 
 class FakeEndpoint:

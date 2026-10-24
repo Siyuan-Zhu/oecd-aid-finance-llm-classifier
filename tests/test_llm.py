@@ -5,7 +5,8 @@ import sys
 
 import pytest
 
-from src.llm import LLMNotConfigured, UnconfiguredGenerator, VertexEndpointGenerator
+from src.llm import LLMNotConfigured, VertexEndpointGenerator
+from src.settings import MODEL_ID
 from tests.fakes import FakeEndpoint
 
 ENV = {"VERTEX_PROJECT": "my-project", "VERTEX_REGION": "us-central1", "VERTEX_ENDPOINT_ID": "1234567890"}
@@ -58,6 +59,8 @@ def test_missing_vertex_sdk_is_reported_clearly(monkeypatch):
         generator.generate(["prompt"])
 
 
-def test_unconfigured_generator_refuses_to_produce_output():
-    with pytest.raises(LLMNotConfigured, match="no endpoint"):
-        UnconfiguredGenerator("no endpoint").generate(["prompt"])
+def test_the_generator_names_the_model_it_expects_the_endpoint_to_serve(clean_env):
+    for name, value in ENV.items():
+        clean_env.setenv(name, value)
+    assert VertexEndpointGenerator.from_env().model_id == MODEL_ID
+    assert VertexEndpointGenerator("p", "r", "e", model_id="other/model").model_id == "other/model"

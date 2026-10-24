@@ -2,14 +2,18 @@
 
 import pytest
 
-from src.classifiers import FewShotLLM, TfidfKnn, TfidfLogReg
+from src.classifiers import FewShotLLM, FewShotPrompter, TfidfKnn, TfidfLogReg
 from src.retrieval import TfidfRetriever
 from src.taxonomy import load_taxonomy
 from tests.fakes import FakeTextGenerator, make_record
 
 
-MALARIA = ["malaria bed nets insecticide mosquito", "malaria spraying mosquito nets villages", "anti-malarial drugs mosquito"]
-TB = ["tuberculosis treatment clinics detection", "tuberculosis drugs patients sputum", "tb screening clinics treatment"]
+MALARIA = [
+    "malaria bed nets insecticide mosquito", "malaria spraying mosquito nets villages", "anti-malarial drugs mosquito",
+]
+TB = [
+    "tuberculosis treatment clinics detection", "tuberculosis drugs patients sputum", "tb screening clinics treatment",
+]
 MENTAL = ["mental health counselling psychosocial", "psychosocial support depression counselling"]
 TRAIN = (
     [make_record(i, t, "12262") for i, t in enumerate(MALARIA)]
@@ -29,8 +33,11 @@ def test_fit_returns_the_classifier(baseline):
 
 
 def test_baselines_learn_a_separable_toy_problem(baseline):
-    queries = [make_record(100, "bed nets against mosquito", "12262"), make_record(101, "tuberculosis clinics", "12263"),
-               make_record(102, "counselling for depression", "12340")]
+    queries = [
+        make_record(100, "bed nets against mosquito", "12262"),
+        make_record(101, "tuberculosis clinics", "12263"),
+        make_record(102, "counselling for depression", "12340"),
+    ]
     assert [p.code5 for p in baseline.predict(queries)] == ["12262", "12263", "12340"]
 
 
@@ -42,7 +49,8 @@ def test_predictions_never_leave_the_records_sector(baseline):
 
 
 def test_confidence_is_a_probability_like_number(baseline):
-    for p in baseline.predict([make_record(100, "bed nets", "12262"), make_record(101, "unrelated words entirely", "12263")]):
+    queries = [make_record(100, "bed nets", "12262"), make_record(101, "unrelated words entirely", "12263")]
+    for p in baseline.predict(queries):
         assert 0.0 <= p.confidence <= 1.0
 
 
@@ -119,3 +127,12 @@ def test_one_answer_per_record_in_order():
     records = [make_record(100, "a", "12262"), make_record(101, "b", "12263"), make_record(102, "c", "12340")]
     assert [p.code5 for p in model.predict(records)] == ["12262", "12263", "12340"]
     assert len(generator.prompts) == 3
+
+
+def test_prompter_builds_prompts_without_any_generator_and_reports_the_examples_used():
+    prompter = FewShotPrompter(TfidfRetriever, k=2).fit(TRAIN)
+    prompt = prompter.prompt_for(make_record(100, "bed nets against malaria mosquito", "12262"))
+    assert len(prompt.examples) == 2
+    assert {e.code3 for e in prompt.examples} == {"122"}
+    assert prompt.examples[0].code5 == "12262"                 # nearest first
+    assert prompt.text.index(prompt.examples[1].text) < prompt.text.index(prompt.examples[0].text)

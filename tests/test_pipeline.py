@@ -36,6 +36,27 @@ def test_threshold_is_chosen_on_val_and_reported_once_on_test(run):
     assert set(entry["test"]) == {"coverage", "precision", "answered"}
 
 
+def test_hyperparameters_are_swept_on_val_and_the_best_val_macro_f1_is_the_one_reported(run):
+    result, _ = run
+    for key, parameter, grid in (("tfidf_logreg", "C", [1, 10, 100]), ("tfidf_knn", "k", [3, 5, 10])):
+        entry = result["baselines"][key]
+        selection = entry["selection"]
+        assert (selection["parameter"], selection["metric"]) == (parameter, "macro_f1")
+        assert [c["value"] for c in selection["candidates"]] == grid
+        best = max(selection["candidates"], key=lambda c: c["val_macro_f1"])
+        assert selection["chosen"] == best["value"]
+        assert entry["val"] == {"accuracy": best["val_accuracy"], "macro_f1": best["val_macro_f1"]}
+
+
+def test_split_statistics_are_reported(run):
+    result, _ = run
+    split = result["data"]["split"]
+    assert split["near_duplicate_cosine"] == 0.8
+    assert split["components"] >= split["largest_component"] >= 1
+    assert split["max_cosine_to_train"]["test"] < 0.8
+    assert split["max_cosine_to_train"]["val"] < 0.8
+
+
 def test_llm_row_says_it_was_not_run_when_no_endpoint_is_configured(run):
     result, _ = run
     assert result["llm"]["status"] == "not run"
@@ -71,7 +92,17 @@ def test_a_configured_generator_gets_the_llm_row_measured(tmp_path):
     result = run_full_pipeline(results_dir=tmp_path, figure_path=tmp_path / "f.png", generator=generator)
     llm = result["llm"]
     assert llm["status"] == "run"
+    assert llm["model_id"] == "fake-generator"
     assert llm["k"] == 5
     assert llm["test"]["n"] == len(load_splits().test)
     assert llm["parse_failures"] == 0
     assert len(generator.prompts) == llm["test"]["n"]
+
+
+def test_a_generator_that_does_not_say_which_model_it_is_recorded_as_unknown(tmp_path):
+    class Anonymous:
+        def generate(self, prompts):
+            return ["12262" for _ in prompts]
+
+    result = run_full_pipeline(results_dir=tmp_path, figure_path=tmp_path / "f.png", generator=Anonymous())
+    assert result["llm"]["model_id"] == "unknown"
