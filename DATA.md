@@ -29,7 +29,7 @@ The OECD terms and conditions, section 3 "Data" (<https://www.oecd.org/en/about/
 The same section adds: "Data may be subject to restrictions beyond the scope of these Terms and Conditions, either because
 specific terms apply to those Data or because third parties may have ownership interests." The project titles and
 descriptions are free text written by donor agencies, so third-party ownership is possible. This repo commits a sample of
-3,227 of them with the credit above. That is the author's reading of the terms, not legal advice. If you reuse the
+3,227 of them with the credit above. That is my reading of the terms, not legal advice. If you reuse the
 sample, give the same credit and check the terms yourself. Anyone who finds a description that should not be here can
 open an issue and it will be removed.
 
@@ -128,18 +128,13 @@ chain of similar texts forms one group, and a whole group goes to one split. Spl
 
 What this guarantees: for this vectoriser, every val or test text has cosine below 0.8 to every train text. The highest
 value is 0.798 from a val text and 0.789 from a test text to its nearest train text. `tests/test_data.py` checks this
-through `load_splits()`. It does not mean no paraphrase of a test text is in train: texts at cosine 0.7 to 0.8 are still
+through `load_splits()`. It does not mean no paraphrase of a test text is in train: pairs just under 0.8 are still
 allowed to sit in different splits, and a different vectoriser could score a pair differently.
 
 Group statistics over the 3,227 rows: 2,928 groups, of which 2,857 are single texts. The largest group has 28 texts, all
 under 12261 Health education. No group is large enough to swallow a code, so no special
 handling was needed; every code keeps its 60/20/20 shares to within a text or two. The three sectors split 528/176/176
 (121), 1,215/405/404 (122) and 195/64/65 (123), train/val/test.
-
-An earlier version of this split grouped on the first 200 characters of the lower-cased description with digits and
-punctuation removed. A review found that 66 of the 645 test texts had a train neighbour above cosine 0.8 under the same
-vectoriser (45 above 0.9), for example the same programme with a different country name in the title. That key was
-replaced with the components above, and all scores in this repo were recomputed.
 
 ## Rebuild
 
