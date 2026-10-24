@@ -1,59 +1,67 @@
-# OECD aid purpose-code classifier
+# OECD purpose-code classifier
 
-This classifier reads the text of a real OECD aid project and assigns its 5-digit purpose code, which says what the money pays for. On 645 held-out health projects from 2024, a TF-IDF logistic regression (a standard word-based model) gets 74.1% right across 17 codes. Answering only when confident, it handles 59% of projects at 88% precision and leaves the rest for a person.
+This repo packages the method I ran at AidData in 2023. It reads a development-finance project's title and description and assigns its 5-digit OECD purpose code, using FLAN-UL2 on AWS SageMaker with a few coded examples in the prompt. I rewrote it from my 2023 drafts as a small Python package.
 
-It shows how I clean a 370,264-row government file into a leakage-safe dataset, choose models on validation data, route unsure cases to human review, design a few-shot LLM prompt, and write cloud deployment code with a cost estimate. The LLM classifier is built and tested but not yet run on a real model.
+## The problem
 
-![Test accuracy by purpose code for the two baselines](assets/figure1_per_code_accuracy.png)
+Every aid project carries a 3-digit sector code, such as 122 for basic health. The 5-digit purpose code underneath it, such as 12262 for malaria control, says what the money is for. Research assistants coded those by hand, which was slow and costly. Most sectors also had no labelled data to train a model on.
 
-## Why this project
+## The method
 
-Every aid project reported to the OECD's Creditor Reporting System (CRS) has a purpose code. The first three digits give the sector (122 Basic Health), all five the purpose (12262 Malaria control). Donors pick the codes themselves, and checking them by hand is slow work.
+1. Write one prompt per sector. The project's 3-digit code picks the guidelines. The instruction lists only the 5-digit codes under that sector, with the official OECD clarifications.
+2. Choose the examples. I add k already-coded projects to the prompt as input and answer pairs. The best setting takes the k most similar ones by SBERT embedding (Liu et al., 2021). Random and hand-picked examples also work, and the order can be reversed.
+3. Ask the model. FLAN-UL2 answers from the prompt alone. There is no fine-tuning, so one set of weights serves every sector. An answer that is not a valid 5-digit code for that sector is marked unparsed and left for a person.
+4. Build the example pool. Where nothing is labelled yet, Vote-K (Su et al., 2022) picks a small diverse set of projects to hand-label.
 
-In 2023, at AidData (William & Mary), I did this task with FLAN-UL2, an open 20-billion-parameter model from Google, prompted with the OECD code definitions and a few already-coded examples. On 481 hand-coded projects my best accuracy was 96.84%. That data is private and the prompt was not kept, so those numbers cannot be reproduced here and are not comparable with the ones below.
-
-This project rebuilds the approach on public data and measures the baseline an LLM must beat. The same pattern fits finance work such as coding transactions: a model pre-fills the code and a person checks the uncertain ones.
-
-## What I built
-
-- A clean dataset. `scripts/build_sample.py` filters the OECD's 2024 bulk file to English health projects, drops duplicates and texts filed under conflicting codes, and caps each code at 250 rows: 3,227 projects over 17 codes ([filter counts](DATA.md#filters-and-row-counts)).
-- A leakage-safe split. CRS repeats text heavily, and a leaked near-copy inflates every score. I grouped near-duplicate texts (TF-IDF cosine similarity of 0.8 or more) and kept each group in one split, which a test checks.
-- Two baselines, TF-IDF logistic regression and a nearest-neighbour vote, each tuned on validation only and scored on the test split once.
-- A confidence threshold for human review, set on validation as the lowest confidence that reaches 90% precision.
-- A few-shot LLM classifier. `src/prompting.py` rebuilds the 2023 prompt from its write-up: the sector's code definitions, the 5 most similar training projects as examples, then the project, trimmed to FLAN-UL2's 2,048-token input limit. It is tested against a stand-in model, and [results/sample_prompts.md](results/sample_prompts.md) shows three real prompts.
-- Cloud deployment code. `deploy/vertex/deploy_flan_ul2.py` deploys FLAN-UL2 to Google Cloud Vertex AI and tears it down; its default dry run prints the config and hourly cost. It has not been run, and [its README](deploy/vertex/README.md) lists what is unverified.
+```mermaid
+flowchart LR
+    U[Unlabelled projects] -->|Vote-K, about 100| L[Hand-labelled pool]
+    L -->|similarity selection| P[Sector prompt]
+    G[OECD guidelines for the sector] --> P
+    N[New project] --> P
+    P --> M[FLAN-UL2] --> C[5-digit code]
+    C -->|spot-check, add to pool| L
+```
 
 ## Results
 
-| Model | Test accuracy | Macro-F1 | Answering only when confident |
-| :--- | ---: | ---: | :--- |
-| TF-IDF logistic regression | 74.1% | 0.672 | 59% of projects, 88.2% precision |
-| TF-IDF nearest neighbours | 70.7% | 0.642 | 39% of projects, 95.7% precision |
-| Few-shot FLAN-UL2 | not run yet | | |
+These are the figures from my 2023 work on AidData's health-sector projects. That data is private and this repo ships none, so I have not re-run the numbers here.
 
-Macro-F1 averages over codes, so small codes count as much as large ones.
+| Setup | Accuracy |
+| :--- | ---: |
+| Zero-shot | 88% |
+| Hand-picked examples, k=5 | 92% |
+| Hand-picked examples, k=7 | 95% |
+| SBERT similarity, k=5, 8 and 10 | above 96% on average, best 96.84% at k=10 |
 
-Codes with distinctive words are easy: malaria, tuberculosis and mental health score 82% or more with both models. Small codes and close neighbours are hard: health personnel development scores under 13% (16 test projects), and infectious disease control is often coded as COVID-19 control. The sample also drops ambiguous texts, so it is easier than the raw data.
+With Vote-K, I needed about 100 hand-labelled examples instead of about 1,000, and accuracy held against a 1,000-record benchmark.
 
-The FLAN-UL2 row needs a GPU endpoint, about $2.30 an hour on Vertex AI's default two-GPU machine at list price. With one set up, the pipeline fills in the row on the same test split. An LLM is worth that only if it beats the 74.1% TF-IDF reaches in under a minute on a laptop. Full tables, method and limits are in [docs/METHOD.md](docs/METHOD.md).
+## How to use it
+
+Install with `pip install -e ".[sbert,aws]"`. You need two CSV files.
+
+- Unlabelled projects: `title`, `description`, `code3`.
+- Labelled pool: `title`, `description`, `code5`, and an optional `id`.
+
+Deploy the model. The dry run is the default and prints the config and the hourly price. The endpoint bills until you delete it.
+
+```bash
+python deploy/sagemaker/deploy_flan_ul2.py            # dry run
+python deploy/sagemaker/deploy_flan_ul2.py --deploy
+python deploy/sagemaker/deploy_flan_ul2.py --delete
+```
+
+Classify:
+
+```bash
+purpose-classify --unlabelled projects.csv --pool labelled.csv \
+  --endpoint flan-ul2-purpose-coder --k 5 --output predictions.csv
+```
+
+The output keeps your columns and adds `predicted_code5`, `status`, `raw_output` and `example_ids`. To choose what to label first, run `purpose-annotate --unlabelled projects.csv --budget 100 --output to_label.csv`. The [deploy notes](deploy/sagemaker/README.md) cover the instance and the request format.
+
+Where the 2023 drafts were silent, I picked a default and marked it in the code as not specified in the 2023 drafts. That covers the SBERT model, the Vote-K graph size and the decoding settings. FLAN-UL2's 2,048-token window limits how large k can be.
 
 ## Tech stack
 
-Python, pandas, scikit-learn, matplotlib, pytest, GitHub Actions, FLAN-UL2, Hugging Face text-generation-inference, Google Cloud Vertex AI.
-
-## What I'd do next
-
-- Deploy FLAN-UL2, measure the LLM row, then tear the endpoint down.
-- Try SBERT example retrieval, as in 2023 (written, not yet in the default run).
-- Predict the 3-digit sector too; in practice it is often unknown.
-
-## Run it
-
-```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt pytest
-python src/run_pipeline.py   # no download; rewrites results/ and the figure
-pytest -q
-```
-
-To rebuild the data or run the LLM row, see [docs/METHOD.md](docs/METHOD.md#other-commands). MIT licensed; the data is the OECD's, cited in [DATA.md](DATA.md).
+Python 3.11 to 3.13, NumPy, sentence-transformers (optional), boto3, FLAN-UL2 on AWS SageMaker, pytest, ruff and GitHub Actions.
