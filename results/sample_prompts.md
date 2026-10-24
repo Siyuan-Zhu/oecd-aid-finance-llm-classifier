@@ -6,7 +6,7 @@ The prompt is a reconstruction from the 2023 write-up, not the original prompt t
 
 ## Test record 2007004448-1: sector 121 Health, General
 
-Correct answer (not in the prompt): `12182` Medical research. Estimated size: 812 tokens.
+Correct answer (not in the prompt): `12182` Medical research. Estimated size: 921 tokens.
 
 ```text
 This is a reading comprehension and text categorisation task. Read the title and description of an aid project and decide which OECD Creditor Reporting System purpose code describes it.
@@ -19,16 +19,16 @@ The project belongs to sector 121 (Health, General). Choose exactly one of these
 
 Answer with the 5-digit code only.
 
-Project: Türkiye contribution to the Common Provisioning Fund for the EFSD+ 2024. C(2024)9162 of 17.12.2024 on the financing of the individual measure for the provisioning in 2024 of budgetary guarantees under the European Fund for Sustainable Development Plus (EFSD+) for Türkiye
-Purpose code: 12181
-
 Project: Early Careers R&D Partner Network. To support the engagement in leading health research that benefits individuals disproportionately impacted by diseases, who come from historically economically disadvantaged backgrounds.
 Purpose code: 12110
 
-Project: Development of next generation anti-malarials targeting the essential parasite protein kinase PfCLK3. MRC IIB award to develop early stage drugs that can offer the potential of curing the symptoms of malaria but also importantly to prevent transmission of malaria from one person to another
-Purpose code: 12182
+Project: Global Antimicrobial Resistance Innovation Fund (GAMRIF) – Programme costs. The primary purpose of the Global AMR Innovation Fund (GAMRIF) project is for the benefit of low- and middle-income countries (LMICs). Programme costs fund essential activities such as delivery partner events, general management to support better alignment, and technical accuracy across GAMRIF activities.
+Purpose code: 12110
 
-Project: Capacity-building for health systems design in India. to support capacity building of a new cadre of Indian researchers/analysts in health systems design and to conduct relevant health systems research to contribute to improving people's health, well-being and financial protection in India
+Project: Stichting Medical Credit Fund. In 2009, the foundation launched the Medical Credit Fund (MCF) to finance small and medium-sized healthcare facilities in Africa, improving access to quality services for low-income patients. MCF provides flexible local currency debt finance to healthcare providers through risk-sharing partnerships with local financial institutions. Borrowers include hospitals, clinics, diagnostic centres, pharmacies and training institutes. Alongside debt capital, MCF provides healthcare providers with technical assistance to help improve their quality and increase their capacity.
+Purpose code: 12110
+
+Project: Leading University for International Cooperation(Sri Lanka). Establishment of the Program in Biomolecular Science and Industrial Biotechnology in the Faculty of Science, University of Colombo and the Innovation Center for Local Biotechnology Industry
 Purpose code: 12110
 
 Project: Africa Health Fund (Aureos). Africa Health Fund is targeting small and medium sized companies that help low-income Africans gain access to affordable but high-quality health services. The fund is managed by Aureos Capital.
@@ -38,9 +38,9 @@ Project: APIDC Biotech Fund. Indian SME fund focusing on biotechnology and pharm
 Purpose code:
 ```
 
-## Test record 2018000442006-1: sector 122 Basic Health
+## Test record 2012004303-1: sector 122 Basic Health
 
-Correct answer (not in the prompt): `12240` Basic nutrition. Estimated size: 1460 tokens.
+Correct answer (not in the prompt): `12230` Basic health infrastructure. Estimated size: 1359 tokens.
 
 ```text
 This is a reading comprehension and text categorisation task. Read the title and description of an aid project and decide which OECD Creditor Reporting System purpose code describes it.
@@ -58,28 +58,28 @@ The project belongs to sector 122 (Basic Health). Choose exactly one of these 5-
 
 Answer with the 5-digit code only.
 
-Project: emergency nutrition network. ENN's goal is improved outcomes for nutritionally at-risk populations. Project funding to the Emergency Nutrition Network (ENN) to support the implementation of this programme supporting evidence, knowledge management and learning on nutrition for crises affected and high burden contexts, for the delivery of consensus and agreement on actions to improve nutrition outcomes, more effective nutrition policy, programming and institutional architecture, priority research/ technical reviews and related policy influencing, and key findings disseminated in an accessible manner.ENN adopts a gender transformative approach to their work and priortisies adolesence girls and maternal and lactating women in addressing nutriton security.
-Purpose code: 12240
+Project: Balti Regional Hospital. The aim of the Project loan is to partially finance eligible investments for the construction and equipment of a tertiary care hospital for the North Region of Moldova with, amongst other elements, an ambulatory care centre, cancer centre, operating theatres and inpatient wards, with a capacity of 340 inpatient beds and 78 day-beds, providing better and more accessible public tertiary healthcare to the population and offering improved work, study and research conditions for hospital staff and medical students.Final beneficiaries: the residents of the North Region of the Republic of Moldova, and in particular, hospital staff and medical students.Share
+Purpose code: 12230
 
-Project: Advancing Nutrition. Funding to provide technical support, implement innovative nutrition interventions, and generate evidence to enhance nutrition programming toward achieving the overall goal of improving nutrition for a health.
-Purpose code: 12240
+Project: Health Provider Institutions Phase Two. Contributing to implementation of the country's healthcare reform by providing improved conditions for the provision of tertiary health care services. Specifically, the project encompasses the construction and modernisation of the Clinical Centre 'Mother Teresa' and the Regional Clinical Hospital in Shtip.
+Purpose code: 12230
 
-Project: Afikepo Nutrition Programme in Malawi Multi-Annual programme Estimate (Afikepo MAPE). The Overall objective of Afikepo Nutrition Programme in Malawi is to enhance nutrition security in Malawi. Afikepo MAPE will allow the DNHA to implement Afikepo activities as foreseen by the FA, i.e.2.1.4 (Afikepo components 2 and 3) trainings, governance coordination, capacity building, programme management and monitoring of all other activities implemented through PAGODA (FAO and GIZ) and Advocacy grant funding (NGOs) and institutionalisation of nutrition M&E framework
-Purpose code: 12240
+Project: Cure Tuberculosis Project 2. The USAID Cure Tuberculosis project assists the Kyrgyz government to diagnose, treat, and cure people with drug-resistant tuberculosis. The project works to strengthen systems, tools, resources, and human capacity to improve the Kyrgyz Republics response to tuberculosis in line with international recommendations.
+Purpose code: 12263
 
-Project: Monitoring, Evaluation, and Learning Activity. The purpose of the Monitoring, Evaluation and Learning (MEL) Platform is to provide technical and advisory services to design and carry out various monitoring, evaluation and learning activities for USAID/Mali.
-Purpose code: 12250
+Project: Strategic Purchasing for PHC Phase II. To provide tailored support to governments and national stakeholders on foundational primary health care reforms in 6 countries, to ultimately increase health access & outcomes for levels of spend, and to contribute to global learning.
+Purpose code: 12220
 
-Project: Strengthening national nutrition information systems. The overall objective of the proposed initiative is increased uptake of nutrition information and improved knowledge for policy and programme development, implementation and monitoring. The specific objective of this project is improved NIS and country capacity in monitoring programmes and national/international nutrition targets.
-Purpose code: 12240
+Project: Supp childhood cancer prog in TZ,Inst collaboratio btwn TLM,Crumlin Childrens Hos. The project supports Child cancer (Paediatric Oncology) services in Tanzania by providing access to quality, free cancer treatment and care services for all children in need.
+Purpose code: 12281
 
-Project: Knowledge and research for nutrition. The overall objective is to provide improved knowledge and evidence for better project/programme design & management, monitoring and evaluation and policy development for nutrition, in view of increasing the effectiveness of programmes and investments in that crucial development area.
+Project: Childrens Hospital Establishment Project. 1) To function as a tertiary hospital to cure the diseases of children and increase the health care coverage, 2) to perform an education function for pediatrics interns and conduct research for young childrens diseases
 Purpose code:
 ```
 
-## Test record 2022001211-1: sector 123 Non-communicable diseases (NCDs)
+## Test record 2018011648-1: sector 123 Non-communicable diseases (NCDs)
 
-Correct answer (not in the prompt): `12340` Promotion of mental health and well-being. Estimated size: 1850 tokens.
+Correct answer (not in the prompt): `12340` Promotion of mental health and well-being. Estimated size: 1576 tokens.
 
 ```text
 This is a reading comprehension and text categorisation task. Read the title and description of an aid project and decide which OECD Creditor Reporting System purpose code describes it.
@@ -92,21 +92,21 @@ The project belongs to sector 123 (Non-communicable diseases (NCDs)). Choose exa
 
 Answer with the 5-digit code only.
 
-Project: Promotion de la santé mentale et prévention du suicide-NP. FAIRMED and Christoffel Blindenmission (CBM) have joined forces in the LNOB Alliance. It works in fragile contexts, prioritizing the needs of the most marginalized and discriminated people especially of women, men, girls and boys with disabilities. It seeks to improve living conditions of individuals and empowering marginalized communities while also strengthening inclusive systems and services. The Alliance contributes to the implementation of the UN Conventions on the Rights of Persons with Disabilities, which Switzerland ratified in 2014.
+Project: Reinforcing the access to Mental Health services, key interventions to strengthen individual and community resilience in a protracted crisis. The resilience of the population living under occupation and constant violence in the oPT is strengthened by the improved availability, accessibility, acceptance and quality of the mental health services (MH).
 Purpose code: 12340
 
-Project: Santé mentale pour tous III (OCADES)-BF. FAIRMED and Christoffel Blindenmission (CBM) have joined forces in the LNOB Alliance. It works in fragile contexts, prioritizing the needs of the most marginalized and discriminated people especially of women, men, girls and boys with disabilities. It seeks to improve living conditions of individuals and empowering marginalized communities while also strengthening inclusive systems and services. The Alliance contributes to the implementation of the UN Conventions on the Rights of Persons with Disabilities, which Switzerland ratified in 2014.
+Project: Mental Health Work Force Training Program. To Promote mental health, prevent the occurrence of mental health problems in vulnerable groups. To exchange knowledge, share experiences and learnings on mental health promotion, prevention, rehabilitation, and treatment in their country. To understand and learn mental health processes, strategies, operations, community mental health services.
 Purpose code: 12340
 
-Project: Santé mentale communautaire-BO. FAIRMED and Christoffel Blindenmission (CBM) have joined forces in the LNOB Alliance. It works in fragile contexts, prioritizing the needs of the most marginalized and discriminated people especially of women, men, girls and boys with disabilities. It seeks to improve living conditions of individuals and empowering marginalized communities while also strengthening inclusive systems and services. The Alliance contributes to the implementation of the UN Conventions on the Rights of Persons with Disabilities, which Switzerland ratified in 2014.
+Project: Youth Mental Health Well-being - The Path to a Sustainable Future. The project aims to improve the lives of young people at risk for mental health and mental illness in the Elbasan region by offering training and best practices for caring for the mental health of young people. Duration - 1 year, Budget - BGN 24 305.
 Purpose code: 12340
 
-Project: EQuaLISED-ZW. FAIRMED and Christoffel Blindenmission (CBM) have joined forces in the LNOB Alliance. It works in fragile contexts, prioritizing the needs of the most marginalized and discriminated people especially of women, men, girls and boys with disabilities. It seeks to improve living conditions of individuals and empowering marginalized communities while also strengthening inclusive systems and services. The Alliance contributes to the implementation of the UN Conventions on the Rights of Persons with Disabilities, which Switzerland ratified in 2014.
+Project: SAKI-M-H-U (Schooling, education, children, Mental health, Ukraine). Training project to train pediatricians, child psychiatrists, child psychologists and child health nurses in the diagnosis and treatment of war-related mental disorders in Ukrainian children/adolescents
 Purpose code: 12340
 
-Project: Sustainable support to people displaced by conflict and natural disasters and their host communities/ Social Cohesion. The project aims to strengthen social cohesion for forcibly displaced populations and host communities in Ethiopia through an area and community based approach focusing on women and people with disability
+Project: Mental Health for All. In Ukraine, socio-economic factors, the protracted conflict, coupled with an oudated mental health care system result in a high prevalence and poor treatment of mental health disorders. This project supports the implementation of reforms in the mental healthcare sector by improving framework conditions, piloting integrated, communiry-based models of care and providing psychosocial support to communities affected by the ongoing conflict.
 Purpose code: 12340
 
-Project: Hemayah: Protecting and Empowering Marginalized Communities. Egypt is a destination country for migrants and forcibly displaced persons facing challenging humanitarian conditions and limited prospects for integration. Switzerland will contribute to the Hemayah/Protection project implemented by Terre des Hommes to improve survival, protection, self-reliance, and wellbeing of migrants and forcibly displaced persons from marginalized communities. The project will provide comprehensive services and opportunities for skills development and socioeconomic integration through a sustainable community based approach.
+Project: Mental Health for Ukraine (MH4U). The Mental Health for Ukraine project is a flagship Swiss engagement which strengthens the capacity and resilience of the mental health system in a context of growing demand and resource scarcity. Switzerland renews its multi-year commitment and pursues a tailored approach addressing acute mental health needs as a consequence of the conflict. The project contributes to the overall resilience of the Ukrainian people, aligns with government priorities and supports Ukraine's reform path.
 Purpose code:
 ```

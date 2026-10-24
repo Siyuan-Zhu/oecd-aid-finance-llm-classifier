@@ -5,103 +5,125 @@
         "chosen_on": "val",
         "target_precision": 0.9,
         "test": {
-          "answered": 293,
-          "coverage": 0.4543,
-          "precision": 0.9044
+          "answered": 253,
+          "coverage": 0.3922,
+          "precision": 0.9565
         },
-        "threshold": 0.6842,
+        "threshold": 0.7291,
         "val": {
-          "answered": 290,
-          "coverage": 0.4489,
-          "precision": 0.9
+          "answered": 262,
+          "coverage": 0.4068,
+          "precision": 0.9008
         }
       },
       "label": "TF-IDF nearest neighbours",
+      "selection": {
+        "candidates": [
+          {
+            "val_accuracy": 0.6755,
+            "val_macro_f1": 0.625,
+            "value": 3
+          },
+          {
+            "val_accuracy": 0.6817,
+            "val_macro_f1": 0.6259,
+            "value": 5
+          },
+          {
+            "val_accuracy": 0.7081,
+            "val_macro_f1": 0.6487,
+            "value": 10
+          }
+        ],
+        "chosen": 10,
+        "metric": "macro_f1",
+        "parameter": "k"
+      },
       "test": {
         "abstentions": 0,
-        "accuracy": 0.6884,
-        "macro_f1": 0.6213,
+        "accuracy": 0.707,
+        "macro_f1": 0.6419,
         "n": 645,
         "per_code_accuracy": {
-          "12110": 0.68,
-          "12181": 0.4231,
-          "12182": 0.86,
-          "12191": 0.7,
-          "12220": 0.68,
-          "12230": 0.7143,
+          "12110": 0.7,
+          "12181": 0.3462,
+          "12182": 0.88,
+          "12191": 0.72,
+          "12220": 0.56,
+          "12230": 0.7551,
           "12240": 0.8,
-          "12250": 0.46,
-          "12261": 0.66,
-          "12262": 0.78,
-          "12263": 0.88,
-          "12264": 0.6,
-          "12281": 0.0625,
+          "12250": 0.5,
+          "12261": 0.72,
+          "12262": 0.82,
+          "12263": 0.9,
+          "12264": 0.6923,
+          "12281": 0.125,
           "12310": 0.1429,
-          "12340": 0.9375,
+          "12340": 0.9394,
           "12350": 0.3333,
-          "12382": 0.875
+          "12382": 1.0
         },
         "per_sector_accuracy": {
-          "121": 0.6989,
-          "122": 0.6741,
-          "123": 0.75
+          "121": 0.7045,
+          "122": 0.6955,
+          "123": 0.7846
         },
         "top_confusions": [
           {
-            "count": 11,
-            "predicted": "12110",
-            "true": "12191"
-          },
-          {
-            "count": 10,
-            "predicted": "12220",
-            "true": "12230"
-          },
-          {
-            "count": 7,
-            "predicted": "12191",
-            "true": "12110"
-          },
-          {
-            "count": 7,
-            "predicted": "12220",
-            "true": "12250"
-          },
-          {
-            "count": 6,
-            "predicted": "12182",
-            "true": "12110"
-          },
-          {
-            "count": 6,
+            "count": 13,
             "predicted": "12191",
             "true": "12181"
           },
           {
-            "count": 6,
-            "predicted": "12110",
-            "true": "12182"
-          },
-          {
-            "count": 6,
-            "predicted": "12262",
-            "true": "12250"
-          },
-          {
-            "count": 6,
+            "count": 11,
             "predicted": "12264",
             "true": "12250"
           },
           {
+            "count": 9,
+            "predicted": "12110",
+            "true": "12191"
+          },
+          {
+            "count": 8,
+            "predicted": "12262",
+            "true": "12250"
+          },
+          {
+            "count": 7,
+            "predicted": "12182",
+            "true": "12110"
+          },
+          {
+            "count": 7,
+            "predicted": "12191",
+            "true": "12110"
+          },
+          {
+            "count": 7,
+            "predicted": "12230",
+            "true": "12220"
+          },
+          {
             "count": 6,
             "predicted": "12220",
-            "true": "12261"
+            "true": "12240"
+          },
+          {
+            "count": 6,
+            "predicted": "12382",
+            "true": "12310"
+          },
+          {
+            "count": 5,
+            "predicted": "12181",
+            "true": "12191"
           }
         ]
       },
       "val": {
-        "accuracy": 0.709,
-        "macro_f1": 0.65
+        "accuracy": 0.7081,
+        "macro_f1": 0.6487
       }
     },
     "tfidf_logreg": {
@@ -109,108 +131,140 @@
         "chosen_on": "val",
         "target_precision": 0.9,
         "test": {
-          "answered": 369,
-          "coverage": 0.5721,
-          "precision": 0.9187
+          "answered": 381,
+          "coverage": 0.5907,
+          "precision": 0.8819
         },
-        "threshold": 0.5347,
+        "threshold": 0.5152,
         "val": {
-          "answered": 373,
-          "coverage": 0.5774,
-          "precision": 0.9008
+          "answered": 404,
+          "coverage": 0.6273,
+          "precision": 0.901
         }
       },
       "label": "TF-IDF logistic regression",
+      "selection": {
+        "candidates": [
+          {
+            "val_accuracy": 0.7562,
+            "val_macro_f1": 0.6896,
+            "value": 1
+          },
+          {
+            "val_accuracy": 0.7748,
+            "val_macro_f1": 0.7041,
+            "value": 10
+          },
+          {
+            "val_accuracy": 0.7686,
+            "val_macro_f1": 0.6996,
+            "value": 100
+          }
+        ],
+        "chosen": 10,
+        "metric": "macro_f1",
+        "parameter": "C"
+      },
       "test": {
         "abstentions": 0,
-        "accuracy": 0.7566,
-        "macro_f1": 0.7092,
+        "accuracy": 0.7411,
+        "macro_f1": 0.6719,
         "n": 645,
         "per_code_accuracy": {
-          "12110": 0.74,
-          "12181": 0.5385,
-          "12182": 0.94,
-          "12191": 0.78,
-          "12220": 0.72,
-          "12230": 0.7551,
-          "12240": 0.92,
-          "12250": 0.66,
-          "12261": 0.62,
-          "12262": 0.88,
-          "12263": 0.88,
-          "12264": 0.65,
-          "12281": 0.125,
-          "12310": 0.4286,
-          "12340": 0.9688,
+          "12110": 0.68,
+          "12181": 0.4615,
+          "12182": 0.92,
+          "12191": 0.8,
+          "12220": 0.54,
+          "12230": 0.7959,
+          "12240": 0.88,
+          "12250": 0.68,
+          "12261": 0.64,
+          "12262": 0.82,
+          "12263": 0.92,
+          "12264": 0.7949,
+          "12281": 0.0625,
+          "12310": 0.1429,
+          "12340": 0.9697,
           "12350": 0.3333,
           "12382": 0.9375
         },
         "per_sector_accuracy": {
-          "121": 0.7784,
-          "122": 0.7383,
-          "123": 0.8125
+          "121": 0.75,
+          "122": 0.7302,
+          "123": 0.7846
         },
         "top_confusions": [
           {
-            "count": 9,
-            "predicted": "12220",
-            "true": "12230"
-          },
-          {
-            "count": 8,
-            "predicted": "12110",
-            "true": "12191"
-          },
-          {
-            "count": 8,
-            "predicted": "12220",
-            "true": "12261"
-          },
-          {
-            "count": 7,
-            "predicted": "12240",
-            "true": "12261"
-          },
-          {
-            "count": 7,
-            "predicted": "12230",
-            "true": "12281"
-          },
-          {
-            "count": 6,
+            "count": 10,
             "predicted": "12182",
             "true": "12110"
           },
           {
-            "count": 6,
-            "predicted": "12110",
-            "true": "12181"
-          },
-          {
-            "count": 6,
-            "predicted": "12230",
-            "true": "12220"
-          },
-          {
-            "count": 6,
+            "count": 10,
             "predicted": "12264",
             "true": "12250"
           },
           {
-            "count": 5,
+            "count": 9,
+            "predicted": "12110",
+            "true": "12191"
+          },
+          {
+            "count": 9,
+            "predicted": "12230",
+            "true": "12220"
+          },
+          {
+            "count": 8,
+            "predicted": "12110",
+            "true": "12181"
+          },
+          {
+            "count": 7,
+            "predicted": "12250",
+            "true": "12220"
+          },
+          {
+            "count": 7,
+            "predicted": "12220",
+            "true": "12230"
+          },
+          {
+            "count": 6,
             "predicted": "12191",
             "true": "12110"
+          },
+          {
+            "count": 6,
+            "predicted": "12220",
+            "true": "12261"
+          },
+          {
+            "count": 6,
+            "predicted": "12240",
+            "true": "12261"
           }
         ]
       },
       "val": {
-        "accuracy": 0.7632,
-        "macro_f1": 0.6945
+        "accuracy": 0.7748,
+        "macro_f1": 0.7041
       }
     }
   },
   "data": {
     "sample_sha256": "31a8a33651eeaf5b8be36b1be93530b6e55e7452d8bf3dec72b3f25f3c5eaf57",
+    "split": {
+      "components": 2928,
+      "largest_component": 28,
+      "max_cosine_to_train": {
+        "test": 0.7885,
+        "val": 0.7979
+      },
+      "near_duplicate_cosine": 0.8,
+      "singleton_components": 2857
+    },
     "test": 645,
     "test_per_code": {
       "12110": 50,
@@ -224,20 +278,20 @@
       "12261": 50,
       "12262": 50,
       "12263": 50,
-      "12264": 40,
+      "12264": 39,
       "12281": 16,
       "12310": 7,
-      "12340": 32,
+      "12340": 33,
       "12350": 9,
       "12382": 16
     },
-    "train": 1936,
-    "val": 646
+    "train": 1938,
+    "val": 644
   },
   "llm": {
     "intended_model": "google/flan-ul2",
     "k": 5,
-    "reason": "no endpoint configured: set VERTEX_PROJECT, VERTEX_REGION and VERTEX_ENDPOINT_ID after deploying FLAN-UL2 with deploy/vertex/deploy_flan_ul2.py",
+    "reason": "no endpoint configured: set VERTEX_PROJECT, VERTEX_REGION, VERTEX_ENDPOINT_ID; deploy FLAN-UL2 with deploy/vertex/deploy_flan_ul2.py first",
     "status": "not run"
   },
   "task": "predict the 5-digit OECD purpose code given the 3-digit sector (health sectors 121, 122, 123)"

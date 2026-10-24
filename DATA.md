@@ -87,7 +87,7 @@ Notes on the steps:
 | Sector | Code | Name | Distinct texts available | In sample | Train | Val | Test |
 | :--- | :--- | :--- | ---: | ---: | ---: | ---: | ---: |
 | 121 | 12110 | Health policy and administrative management | 1,089 | 250 | 150 | 50 | 50 |
-| 121 | 12181 | Medical education/training | 129 | 129 | 77 | 26 | 26 |
+| 121 | 12181 | Medical education/training | 129 | 129 | 78 | 25 | 26 |
 | 121 | 12182 | Medical research | 580 | 250 | 150 | 50 | 50 |
 | 121 | 12191 | Medical services | 512 | 250 | 150 | 50 | 50 |
 | 122 | 12220 | Basic health care | 823 | 250 | 150 | 50 | 50 |
@@ -97,13 +97,13 @@ Notes on the steps:
 | 122 | 12261 | Health education | 529 | 250 | 150 | 50 | 50 |
 | 122 | 12262 | Malaria control | 295 | 250 | 150 | 50 | 50 |
 | 122 | 12263 | Tuberculosis control | 264 | 250 | 150 | 50 | 50 |
-| 122 | 12264 | COVID-19 control | 199 | 199 | 119 | 40 | 40 |
+| 122 | 12264 | COVID-19 control | 199 | 199 | 120 | 40 | 39 |
 | 122 | 12281 | Health personnel development | 80 | 80 | 48 | 16 | 16 |
 | 123 | 12310 | NCDs control, general | 36 | 36 | 22 | 7 | 7 |
-| 123 | 12340 | Promotion of mental health and well-being | 163 | 163 | 98 | 33 | 32 |
+| 123 | 12340 | Promotion of mental health and well-being | 163 | 163 | 98 | 32 | 33 |
 | 123 | 12350 | Other prevention and treatment of NCDs | 45 | 45 | 27 | 9 | 9 |
 | 123 | 12382 | Research for prevention and control of NCDs | 80 | 80 | 48 | 16 | 16 |
-| | | Total | 6,271 | 3,227 | 1,936 | 646 | 645 |
+| | | Total | 6,271 | 3,227 | 1,938 | 644 | 645 |
 
 Sectors 121 to 123 hold 20 five-digit codes in the OECD list. The sample has 17. The other three:
 
@@ -117,12 +117,29 @@ those codes rest on a handful of examples and move a lot with one more or one fe
 
 ## Train, validation and test split
 
-60/20/20 into train (1,936), validation (646) and test (645), stratified by purpose code with scikit-learn's
-`StratifiedGroupKFold` (5 folds, shuffled, seed 42; one fold is test, one is validation, three are train). The group
-key is the text lower-cased with digits and punctuation removed, cut to its first 200 characters. Descriptions that differ
-only in a year or a number ("Direct Aid Program (DAP) 2023-24" and "2024-25") share a key and stay in the same split. Test
-checks that no group appears in two splits. The three sectors split 527/176/176 (121), 1,214/405/405 (122) and
-195/65/64 (123).
+60/20/20 into train (1,938), validation (644) and test (645), stratified by purpose code with scikit-learn's
+`StratifiedGroupKFold` (5 folds, shuffled, seed 42; one fold is test, one is validation, three are train).
+
+The groups are near-duplicate clusters. The model input text (title plus description) of every sample row is turned into
+a TF-IDF vector with the vectoriser in `src/settings.py` (unigrams and bigrams, English stop words removed, sublinear term
+frequency), fitted on the whole sample. Two rows are joined when their cosine similarity is at least
+`NEAR_DUPLICATE_COSINE = 0.8` (`src/data.py`). The groups are the connected components of that relation (union-find), so a
+chain of similar texts forms one group, and a whole group goes to one split. Splitting is then done on groups.
+
+What this guarantees: for this vectoriser, every val or test text has cosine below 0.8 to every train text. The highest
+value is 0.798 from a val text and 0.789 from a test text to its nearest train text. `tests/test_data.py` checks this
+through `load_splits()`. It does not mean no paraphrase of a test text is in train: texts at cosine 0.7 to 0.8 are still
+allowed to sit in different splits, and a different vectoriser could score a pair differently.
+
+Group statistics over the 3,227 rows: 2,928 groups, of which 2,857 are single texts. The largest group has 28 texts, all
+under 12261 Health education. No group is large enough to swallow a code, so no special
+handling was needed; every code keeps its 60/20/20 shares to within a text or two. The three sectors split 528/176/176
+(121), 1,215/405/404 (122) and 195/64/65 (123), train/val/test.
+
+An earlier version of this split grouped on the first 200 characters of the lower-cased description with digits and
+punctuation removed. A review found that 66 of the 645 test texts had a train neighbour above cosine 0.8 under the same
+vectoriser (45 above 0.9), for example the same programme with a different country name in the title. That key was
+replaced with the components above, and all scores in this repo were recomputed.
 
 ## Rebuild
 
