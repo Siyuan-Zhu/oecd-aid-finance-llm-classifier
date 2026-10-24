@@ -5,7 +5,7 @@ import sys
 
 import pytest
 
-from src.llm import LLMNotConfigured, VertexEndpointGenerator
+from src.llm import LLMNotConfigured, UnconfiguredGenerator, VertexEndpointGenerator
 from tests.fakes import FakeEndpoint
 
 ENV = {"VERTEX_PROJECT": "my-project", "VERTEX_REGION": "us-central1", "VERTEX_ENDPOINT_ID": "1234567890"}
@@ -56,3 +56,8 @@ def test_missing_vertex_sdk_is_reported_clearly(monkeypatch):
     generator = VertexEndpointGenerator("p", "r", "e")
     with pytest.raises(ImportError, match="google-cloud-aiplatform"):
         generator.generate(["prompt"])
+
+
+def test_unconfigured_generator_refuses_to_produce_output():
+    with pytest.raises(LLMNotConfigured, match="no endpoint"):
+        UnconfiguredGenerator("no endpoint").generate(["prompt"])

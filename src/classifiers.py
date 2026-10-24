@@ -123,12 +123,13 @@ class TfidfLogReg(_PerSector):
 
 class TfidfKnn(_PerSector):
     """Cosine similarity over TF-IDF vectors; the k nearest training records vote, weighted by similarity.
+    k=10 was picked from {3, 5, 10} on val.
 
     Confidence is the winning class's share of the total similarity weight among the k neighbours. With no word
     overlap at all, the sector's most common training code is returned with confidence 0.
     """
 
-    def __init__(self, taxonomy: Taxonomy | None = None, k: int = 5):
+    def __init__(self, taxonomy: Taxonomy | None = None, k: int = 10):
         super().__init__(taxonomy)
         self._k = k
 

@@ -28,6 +28,16 @@ class LLMNotConfigured(RuntimeError):
     """No Vertex AI endpoint is configured in the environment."""
 
 
+class UnconfiguredGenerator:
+    """Placeholder used when no endpoint is configured. It never returns text; calling it raises."""
+
+    def __init__(self, reason: str):
+        self.reason = reason
+
+    def generate(self, prompts: list[str]) -> list[str]:
+        raise LLMNotConfigured(self.reason)
+
+
 class VertexEndpointGenerator:
     def __init__(self, project: str, region: str, endpoint_id: str, endpoint=None, max_workers: int = 4):
         self.project = project
